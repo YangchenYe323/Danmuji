@@ -9,6 +9,11 @@ description = "Bilibili Danmuji written in Rust"
 
 [dependencies]
 thiserror = "1.0.31"
+tungstenite = "0.17.2"
+serde_json = "1.0.81"
+rand = "0.8.5"
+websocket = "0.26.4"
+byteorder = "1"
 
 [dependencies.rocket]
 version = "0.5.0-rc.2"
