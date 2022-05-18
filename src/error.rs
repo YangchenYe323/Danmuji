@@ -19,6 +19,9 @@ pub enum DanmujiError {
 
     #[error("Json Serialization Error")]
     JsonError(String),
+
+    #[error("Websocket Error")]
+    WebsocketError(String),
 }
 
 impl DanmujiError {
@@ -54,5 +57,11 @@ impl From<std::io::Error> for DanmujiError {
 impl From<serde_json::Error> for DanmujiError {
     fn from(err: serde_json::Error) -> DanmujiError {
         DanmujiError::JsonError(err.to_string())
+    }
+}
+
+impl From<websocket::WebSocketError> for DanmujiError {
+    fn from(err: websocket::WebSocketError) ->DanmujiError {
+        DanmujiError::WebsocketError(err.to_string())
     }
 }

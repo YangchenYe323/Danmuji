@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![warn(rust_2018_idioms)]
 
+mod client;
 mod config;
 mod core;
 mod cors;
@@ -16,6 +17,7 @@ use config::BulletScreenConfig;
 pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
 use cors::CORS;
 use error::DanmujiError;
+use client::BiliClient;
 use reqwest::header;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::tokio::sync::Mutex;
@@ -26,6 +28,8 @@ use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 use std::time::Duration;
 use websocket::{ClientBuilder, Message, OwnedMessage};
+use tracing::{info, Level};
+
 
 pub type Result<T> = std::result::Result<T, DanmujiError>;
 
@@ -213,58 +217,8 @@ async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> Result<String> {
         let bc = BulletScreenConfig::fetch(&ws, &state).await.unwrap();
         println!("{:?}", bc);
         let uid = state.user.uid;
-        // in a real application, we will communicate with DanmujiCore
-        // and let the core module takes care of the following functionality
-        // here we're experimenting the correct workflow
-        std::thread::spawn(move || {
-            // let url = ws.get_wss_url().unwrap();
-            // let url = "wss://broadcastlv.chat.bilibili.com/sub";
-            let url = "ws://broadcastlv.chat.bilibili.com:2244/sub";
-            println!("{}", url);
-            let client = ClientBuilder::new(&url)
-                .unwrap()
-                .connect_insecure()
-                .unwrap();
 
-            let (mut read, mut write) = client.split().unwrap();
-
-            println!("Connection Established");
-
-            // send enter message
-            let enter_msg = BiliWebsocketMessage::entry(ws.room_init.room_id, Some(uid));
-            write
-                .send_message(&Message::binary(enter_msg.to_vec()))
-                .unwrap();
-
-            std::thread::spawn(move || {
-                // send heart beat
-                println!("Heat Beat Thread started");
-                loop {
-                    let heartbeat = BiliWebsocketMessage::heartbeat();
-                    write
-                        .send_message(&Message::binary(heartbeat.to_vec()))
-                        .unwrap();
-                    std::thread::sleep(Duration::from_secs(30));
-                }
-            });
-
-            for message in read.incoming_messages() {
-                let message = message.unwrap();
-                match message {
-                    OwnedMessage::Binary(buf) => {
-                        let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
-                        
-                        for inner in msg.parse() {
-                            println!("{:#?}", inner);
-                        }
-                    }
-
-                    _ => {
-                        println!("{:?}", message);
-                    }
-                }
-            }
-        });
+        let _cli = BiliClient::start(ws.room_init.room_id, Some(uid))?;
     }
 
     Ok("Hello".to_string())
@@ -283,6 +237,16 @@ fn rocket(state: DanmujiState) -> rocket::Rocket<Build> {
 
 #[rocket::main]
 async fn main() {
+    // set log collector
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .pretty()
+        .with_max_level(Level::DEBUG)
+        .init();
+
+    info!("Logger Started");
+
+
     let config = load_user_config();
 
     println!("{:?}", config);
