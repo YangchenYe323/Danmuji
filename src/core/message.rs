@@ -63,13 +63,12 @@ impl BiliWebsocketMessage {
         let (header, _) = buf.split_at(HEADER_LENGTH as usize);
         let header = BiliWebsocketHeader::from_vec(header);
 
-        println!("Message Header: {:?}", header);
-
         // the rest is data
         buf.drain(0..HEADER_LENGTH as usize);
 
         Ok(Self { header, data: buf })
     }
+
 
     // serialize to a binary vector
     pub fn to_vec(&self) -> Vec<u8> {
@@ -87,7 +86,6 @@ impl BiliWebsocketMessage {
                 match header.protocol_version {
                     // data is zlib compressed
                     2 => {
-                        println!("Process Zlib Message");
                         let mut z = ZlibDecoder::new(&data[..]);
                         let mut decompressed_buf = vec![];
                         z.read_to_end(&mut decompressed_buf).unwrap();
@@ -126,7 +124,7 @@ impl BiliWebsocketMessage {
 
 			_ => {
 				// we currently don't deal with client-sent messages
-				println!("Unexpected op type");
+				warn!("Unexpected Op Type");
 				vec![]
 			}
         }
@@ -143,12 +141,9 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
     let mut offset = 0;
     let max_length = buf.len();
 
-    let mut count = 1;
     while offset < max_length {
         let header = BiliWebsocketHeader::from_vec(cur_buf);
         let packet_length = header.packet_length;
-
-		println!("The {}th header from Zlib Frame: {:?}", count, header);
 
 		// this_buf: buffer for current inner
 		// next_buf: the rest
@@ -160,7 +155,6 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
         cur_buf = next_buf;
 
         offset += packet_length as usize;
-        count += 1;
     }
 
 	inners

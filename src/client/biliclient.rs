@@ -73,21 +73,31 @@ impl BiliClient {
 					break;
 				}
 
-                let message = message.unwrap();
-                match message {
-                    websocket::OwnedMessage::Binary(buf) => {
-                        let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
-                        
-                        for inner in msg.parse() {
-                            println!("{:#?}", inner);
-							// send to consumer
-                        }
-                    }
-
-                    _ => {
-                        println!("{:?}", message);
-                    }
-                }
+				match message {
+					Ok(message) => {
+						match message {
+							websocket::OwnedMessage::Binary(buf) => {
+								let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
+								
+								for inner in msg.parse() {
+									info!("Received Message: {:?}", inner);
+									// send to consumer
+								}
+							}
+		
+							_ => {
+								info!("{:?}", message);
+							}
+						}
+					}
+					// websocket is closed
+					Err(websocket::WebSocketError::NoDataAvailable) => {
+						warn!("Websocket is closed by server");
+						break;
+					}
+					//todo: don't know how to handle the other errors
+					_ => continue,
+				}
             }
 
 			info!("Message Thread Shut down");
@@ -114,9 +124,9 @@ impl BiliClient {
 	
 }
 
-impl Drop for BiliClient {
-	fn drop(&mut self) {
-		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
-		// let thread be cleaned up
-	}
-}
+// impl Drop for BiliClient {
+// 	fn drop(&mut self) {
+// 		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+// 		// let thread be cleaned up
+// 	}
+// }
