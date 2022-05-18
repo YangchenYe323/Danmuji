@@ -1,40 +1,28 @@
 #![allow(non_snake_case)]
 #![warn(rust_2018_idioms)]
 
-mod core;
 mod config;
+mod core;
 mod cors;
 mod error;
 
-#[macro_use] 
+#[macro_use]
 extern crate rocket;
-extern crate websocket;
 
-use byteorder::{WriteBytesExt, BigEndian};
-use websocket::{ClientBuilder, Message};
+use byteorder::{BigEndian, WriteBytesExt};
 use config::BulletScreenConfig;
-use rocket::serde::{
-    Serialize,
-    Deserialize,
-    json::Json,
-};
-use rocket::tokio::sync::Mutex;
-use reqwest::header;
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::fs::OpenOptions;
-use std::io::{BufWriter, BufReader};
+pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
 use cors::CORS;
-pub(crate) use config::{
-    UserConfig, 
-    User,
-    RoomConfig,
-    RoomInit,
-    Room,
-    WsConfig,
-};
-use rocket::{State, Build};
 use error::DanmujiError;
+use reqwest::header;
+use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::tokio::sync::Mutex;
+use rocket::{Build, State};
+use std::collections::HashSet;
+use std::fs::OpenOptions;
+use std::io::{BufReader, BufWriter};
+use std::sync::Arc;
+use websocket::{ClientBuilder, Message};
 
 pub type Result<T> = std::result::Result<T, DanmujiError>;
 
@@ -76,7 +64,6 @@ struct UserInfoResponse {
     data: User,
 }
 
-
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
@@ -88,35 +75,39 @@ async fn getQrCode() -> Result<Json<QrCode>> {
     let cli = reqwest::ClientBuilder::new()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36")
         .build()?;
-    let res = cli.get("https://passport.bilibili.com/qrcode/getLoginUrl")
-        .send().await?;
+    let res = cli
+        .get("https://passport.bilibili.com/qrcode/getLoginUrl")
+        .send()
+        .await?;
     let res: QrCodeResponse = res.json().await?;
     Ok(Json(res.data))
 }
-
 
 #[post("/loginCheck", data = "<login_data>")]
 async fn loginCheck(login_data: Json<QrCode>, state: &State<DanmujiState>) -> Result<String> {
     let QrCode { url: _, oauthKey } = login_data.into_inner();
     let mut headers = header::HeaderMap::new();
-    headers.insert("referer", header::HeaderValue::from_static("https://passport.bilibili.com/login"));
+    headers.insert(
+        "referer",
+        header::HeaderValue::from_static("https://passport.bilibili.com/login"),
+    );
     headers.insert("user-agent", header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36"));
 
     let mut form = vec![];
     form.push(("oauthKey", oauthKey));
     form.push(("gourl", "https://www.bilibili.com/".to_string()));
-    
+
     let cli = reqwest::ClientBuilder::new()
         .default_headers(headers)
         .build()?;
-        
-    
-    let res = cli.post("https://passport.bilibili.com/qrcode/getLoginInfo")
+
+    let res = cli
+        .post("https://passport.bilibili.com/qrcode/getLoginInfo")
         .form(&form)
         .send()
         .await?;
-    
-    let headers = res.headers().clone();    
+
+    let headers = res.headers().clone();
     let login_res: LoginResponse = res.json().await?;
 
     println!("{:?}", login_res);
@@ -124,7 +115,7 @@ async fn loginCheck(login_data: Json<QrCode>, state: &State<DanmujiState>) -> Re
     if login_res.status {
         // update user config
         let cookie = headers.get_all("Set-Cookie");
-        
+
         let mut cookie_set = HashSet::new();
 
         for c in cookie {
@@ -224,7 +215,9 @@ struct FirstSecurityData {
 async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> Result<String> {
     let state = state.config.lock().await;
     if let Some(state) = state.as_ref() {
-        let ws = RoomConfig::fetch(roomId, state.raw_cookie.as_str()).await.unwrap();
+        let ws = RoomConfig::fetch(roomId, state.raw_cookie.as_str())
+            .await
+            .unwrap();
         println!("{:?}", ws);
 
         // bullet screen config
@@ -255,17 +248,19 @@ async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> Result<String> {
             };
             let mut data_bytes = serde_json::to_vec(&security_data).unwrap();
             let data_length = data_bytes.len();
-            // header format: 
+            // header format:
             // offset    length    type    endian    name           note
             // 0         4         i32     Big       packet-length
             // 4         2         i16     Big       header-length  Fixed 16
-            // 6         2         i16     Big       proto-version 
-            // 8         4         i32     Big       Opertion Type  
+            // 6         2         i16     Big       proto-version
+            // 8         4         i32     Big       Opertion Type
             // 12        4         i32     Big       Seq ID         Fixed 1
             // reference: https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
             let mut header = vec![];
             // write packet length = header length + data length
-            header.write_u32::<BigEndian>(16 + data_length as u32).unwrap();
+            header
+                .write_u32::<BigEndian>(16 + data_length as u32)
+                .unwrap();
             // write header length
             header.write_u16::<BigEndian>(16).unwrap();
             // write proto-version 1
@@ -277,7 +272,7 @@ async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> Result<String> {
             println!("header: {:?}", header);
 
             header.append(&mut data_bytes);
-            
+
             client.send_message(&Message::binary(header)).unwrap();
 
             for message in client.incoming_messages() {
@@ -302,7 +297,6 @@ fn rocket(state: DanmujiState) -> rocket::Rocket<Build> {
 
 #[rocket::main]
 async fn main() {
-   
     let config = load_user_config();
 
     println!("{:?}", config);
@@ -319,25 +313,24 @@ async fn main() {
     println!("Rocket: deorbit.");
 }
 
-fn save_user_config(config: &UserConfig) -> Result<()>{
+fn save_user_config(config: &UserConfig) -> Result<()> {
     let options = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open("config.json").unwrap();
+        .open("config.json")
+        .unwrap();
 
     let writer = BufWriter::new(options);
-    
+
     serde_json::to_writer(writer, config).unwrap();
 
     Ok(())
 }
 
 fn load_user_config() -> Option<UserConfig> {
-     // try to restore config from file
-     let file = OpenOptions::new()
-     .read(true)
-     .open("config.json");
+    // try to restore config from file
+    let file = OpenOptions::new().read(true).open("config.json");
 
     if let Ok(file) = file {
         let reader = BufReader::new(file);
