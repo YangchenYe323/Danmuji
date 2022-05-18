@@ -184,6 +184,10 @@ impl RoomConfig {
     pub fn get_ws_url(&self) -> Option<String> {
         self.ws.get_ws_url()
     }
+
+    pub fn get_wss_url(&self) -> Option<String> {
+        self.ws.get_wss_url()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -264,6 +268,24 @@ impl WsConfig {
         res.push_str(&host.host);
         res.push_str(":");
         res.push_str(&format!("{}", host.ws_port));
+        res.push_str("/sub");
+        Some(res)
+    }
+
+    pub fn get_wss_url(&self) -> Option<String> {
+        if self.host_list.is_empty() {
+            return None;
+        }
+
+        let mut res = String::new();
+        let index: usize = rand::thread_rng().gen_range(0..self.host_list.len());
+        let host = self.host_list.get(index).unwrap();
+        // build string
+        // ws://<host>:<port>/sub
+        res.push_str("wss://");
+        res.push_str(&host.host);
+        res.push_str(":");
+        res.push_str(&format!("{}", host.wss_port));
         res.push_str("/sub");
         Some(res)
     }

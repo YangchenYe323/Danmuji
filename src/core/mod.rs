@@ -4,6 +4,7 @@
 //! from the live room to the end user through its websocket server.
 mod client;
 mod danmuji_core;
+pub mod message;
 use crate::Result;
 
 /// users (in our case the HTTP Server) interacts with

@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 #![warn(rust_2018_idioms)]
 
 mod config;
@@ -9,6 +10,7 @@ mod error;
 #[macro_use]
 extern crate rocket;
 
+use self::core::message::{BiliWebsocketHeader, BiliWebsocketMessage, OpType};
 use byteorder::{BigEndian, WriteBytesExt};
 use config::BulletScreenConfig;
 pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
@@ -22,7 +24,8 @@ use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
-use websocket::{ClientBuilder, Message};
+use std::time::Duration;
+use websocket::{ClientBuilder, Message, OwnedMessage};
 
 pub type Result<T> = std::result::Result<T, DanmujiError>;
 
@@ -194,20 +197,6 @@ struct BulletScreenData {
     property: BulletScreenConfig,
 }
 
-/// The first packet body sent to Bilibili Live
-/// when websocket connection is established
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct FirstSecurityData {
-    clientver: String,
-    platform: String,
-    protover: u64,
-    uid: u64,
-    roomid: i64,
-    #[serde(rename = "type")]
-    type_: u64,
-}
-
 /// Interface for Test Use
 /// Connect to the given room id using the user credential we hold
 /// and start the websocket client to monitor incoming messages
@@ -223,60 +212,57 @@ async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> Result<String> {
         // bullet screen config
         let bc = BulletScreenConfig::fetch(&ws, &state).await.unwrap();
         println!("{:?}", bc);
-
+        let uid = state.user.uid;
         // in a real application, we will communicate with DanmujiCore
         // and let the core module takes care of the following functionality
         // here we're experimenting the correct workflow
         std::thread::spawn(move || {
-            let url = ws.get_ws_url().unwrap();
+            // let url = ws.get_wss_url().unwrap();
+            // let url = "wss://broadcastlv.chat.bilibili.com/sub";
+            let url = "ws://broadcastlv.chat.bilibili.com:2244/sub";
             println!("{}", url);
-            let mut client = ClientBuilder::new(&url)
+            let client = ClientBuilder::new(&url)
                 .unwrap()
                 .connect_insecure()
                 .unwrap();
 
+            let (mut read, mut write) = client.split().unwrap();
+
             println!("Connection Established");
 
             // send enter message
-            let security_data = FirstSecurityData {
-                clientver: "1.14.0".to_string(),
-                platform: "web".to_string(),
-                protover: 1,
-                uid: 0,
-                roomid: ws.room_init.room_id,
-                type_: 2,
-            };
-            let mut data_bytes = serde_json::to_vec(&security_data).unwrap();
-            let data_length = data_bytes.len();
-            // header format:
-            // offset    length    type    endian    name           note
-            // 0         4         i32     Big       packet-length
-            // 4         2         i16     Big       header-length  Fixed 16
-            // 6         2         i16     Big       proto-version
-            // 8         4         i32     Big       Opertion Type
-            // 12        4         i32     Big       Seq ID         Fixed 1
-            // reference: https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
-            let mut header = vec![];
-            // write packet length = header length + data length
-            header
-                .write_u32::<BigEndian>(16 + data_length as u32)
+            let enter_msg = BiliWebsocketMessage::entry(ws.room_init.room_id, Some(uid));
+            write
+                .send_message(&Message::binary(enter_msg.to_vec()))
                 .unwrap();
-            // write header length
-            header.write_u16::<BigEndian>(16).unwrap();
-            // write proto-version 1
-            header.write_u16::<BigEndian>(1).unwrap();
-            // write operatin type: enter room = 7
-            header.write_u32::<BigEndian>(7).unwrap();
-            // write seq id
-            header.write_u32::<BigEndian>(1).unwrap();
-            println!("header: {:?}", header);
 
-            header.append(&mut data_bytes);
+            std::thread::spawn(move || {
+                // send heart beat
+                println!("Heat Beat Thread started");
+                loop {
+                    let heartbeat = BiliWebsocketMessage::heartbeat();
+                    write
+                        .send_message(&Message::binary(heartbeat.to_vec()))
+                        .unwrap();
+                    std::thread::sleep(Duration::from_secs(30));
+                }
+            });
 
-            client.send_message(&Message::binary(header)).unwrap();
+            for message in read.incoming_messages() {
+                let message = message.unwrap();
+                match message {
+                    OwnedMessage::Binary(buf) => {
+                        let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
+                        
+                        for inner in msg.parse() {
+                            println!("{:#?}", inner);
+                        }
+                    }
 
-            for message in client.incoming_messages() {
-                println!("Recv: {:?}", message.unwrap());
+                    _ => {
+                        println!("{:?}", message);
+                    }
+                }
             }
         });
     }
