@@ -1,6 +1,12 @@
 use crate::{
-    error::DanmujiError, BulletScreenPropertyResponse, Result, RoomInitResponse, RoomResponse,
-    UserInfoResponse, WsConfigResponse, USER_AGENT,
+    error::DanmujiError, 
+    BulletScreenPropertyResponse, 
+    DanmujiResult, 
+    RoomInitResponse, 
+    RoomResponse,
+    UserInfoResponse, 
+    WsConfigResponse, 
+    USER_AGENT,
 };
 use std::collections::HashMap;
 
@@ -21,7 +27,7 @@ pub struct UserConfig {
 impl UserConfig {
     /// fetch needed information to construct a UserConfig
     /// Object
-    pub async fn fetch(raw_cookie: String) -> Result<UserConfig> {
+    pub async fn fetch(raw_cookie: String) -> DanmujiResult<UserConfig> {
         // fetch user information
         let cli = reqwest::Client::new();
         let res = cli
@@ -73,7 +79,7 @@ pub struct Cookie {
 }
 
 /// parse cookie from raw string
-pub fn produce_cookie_from_raw(raw_cookie: &str) -> Result<Cookie> {
+pub fn produce_cookie_from_raw(raw_cookie: &str) -> DanmujiResult<Cookie> {
     let mut cookie_map = HashMap::new();
 
     let raw_token = raw_cookie.split(";");
@@ -121,7 +127,7 @@ pub struct RoomConfig {
 
 impl RoomConfig {
     /// fetch needed information to construct RoomConfig
-    pub async fn fetch(room_id: u64, raw_cookie: &str) -> Result<RoomConfig> {
+    pub async fn fetch(room_id: u64, raw_cookie: &str) -> DanmujiResult<RoomConfig> {
         // room init
         // get room_id and shrot_id
         // api reference: https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.room_init.md
@@ -319,7 +325,7 @@ pub struct BulletScreen {
 }
 
 impl BulletScreenConfig {
-    pub async fn fetch(room: &RoomConfig, user: &UserConfig) -> Result<BulletScreenConfig> {
+    pub async fn fetch(room: &RoomConfig, user: &UserConfig) -> DanmujiResult<BulletScreenConfig> {
         let cli = reqwest::Client::new();
         let res = cli
             .get(format!(

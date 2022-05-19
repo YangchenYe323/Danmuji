@@ -1,6 +1,6 @@
 //! This module implements the BiliClient type,
 //! which wraps around rust-websocket with specific support
-//! for Bilibili live's protocol and message encoding/decoding
+//! for Bilibili live's protocol behavior and message encoding/decoding
 
 use std::{
     sync::{atomic::{AtomicBool, Ordering}, mpsc::Receiver, Arc, Mutex},
@@ -10,13 +10,17 @@ use std::{
 use tracing::{info, error};
 use websocket::Message;
 
-use crate::{core::message::BiliWebsocketMessage, Result};
+use crate::DanmujiResult;
 
-use super::common::BiliMessage;
+use super::{
+	common::BiliMessage,
+	message::BiliWebsocketMessage
+};
 
 // Bilibili's Websocket URL
 const URL: &'static str = "ws://broadcastlv.chat.bilibili.com:2244/sub";
 
+// consumer type
 pub type Consumer = Receiver<BiliMessage>;
 
 /// The wrapper type around rust's websocket client
@@ -34,7 +38,7 @@ pub struct BiliClient {
 impl BiliClient {
     /// start a [BiliClient] instance that connects to @roomid
     /// as the user of @userid
-    pub fn start(room_id: i64, user_id: Option<u64>) -> Result<Self> {
+    pub fn start(room_id: i64, user_id: Option<u64>) -> DanmujiResult<Self> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let downstream = Arc::new(Mutex::new(None));
 
@@ -68,17 +72,17 @@ impl BiliClient {
     }
 }
 
-impl Drop for BiliClient {
-	fn drop(&mut self) {
-		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
-		// let thread be cleaned up
-		let worker = self.worker.take();
-		if let Some(worker) = worker {
-			worker.join().unwrap();
-			info!("BiliClient Worker Thread Collected, Termintating...")
-		}
-	}
-}
+// impl Drop for BiliClient {
+// 	fn drop(&mut self) {
+// 		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+// 		// let thread be cleaned up
+// 		let worker = self.worker.take();
+// 		if let Some(worker) = worker {
+// 			worker.join().unwrap();
+// 			info!("BiliClient Worker Thread Collected, Termintating...")
+// 		}
+// 	}
+// }
 
 #[derive(Debug, Clone)]
 struct ClientConfig {
@@ -106,7 +110,7 @@ enum ClientResult {
 fn start_worker(config: ClientConfig) {
     loop {
         let cfg = config.clone();
-        let worker_handle = std::thread::spawn(move || -> Result<ClientResult> {
+        let worker_handle = std::thread::spawn(move || -> DanmujiResult<ClientResult> {
             let ClientConfig {
                 room_id,
                 user_id,
@@ -162,8 +166,10 @@ fn start_worker(config: ClientConfig) {
                                 let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
 
                                 for inner in msg.parse() {
-                                    info!("Received Message: {:?}", inner);
-                                    // send to consumer
+                                    let bili_msg = BiliMessage::from_raw_wesocket_message(inner);
+									if let Some(msg) = bili_msg {
+										info!("Received Msg: {:?}", msg);
+									}
                                 }
                             }
 

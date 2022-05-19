@@ -4,14 +4,12 @@
 
 mod client;
 mod config;
-mod core;
 mod cors;
 mod error;
 
 #[macro_use]
 extern crate rocket;
 
-use self::core::message::{BiliWebsocketHeader, BiliWebsocketMessage, OpType};
 use byteorder::{BigEndian, WriteBytesExt};
 use client::BiliClient;
 use config::BulletScreenConfig;
@@ -30,7 +28,7 @@ use std::time::Duration;
 use tracing::{info, Level};
 use websocket::{ClientBuilder, Message, OwnedMessage};
 
-pub type Result<T> = std::result::Result<T, DanmujiError>;
+pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
 pub const USER_AGENT: &'static str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36";
 
@@ -77,7 +75,7 @@ fn index() -> &'static str {
 
 /// get qrcode url for login
 #[get("/qrcode")]
-async fn getQrCode() -> Result<Json<QrCode>> {
+async fn getQrCode() -> DanmujiResult<Json<QrCode>> {
     let cli = reqwest::ClientBuilder::new()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36")
         .build()?;
@@ -90,7 +88,7 @@ async fn getQrCode() -> Result<Json<QrCode>> {
 }
 
 #[post("/loginCheck", data = "<login_data>")]
-async fn loginCheck(login_data: Json<QrCode>, state: &State<DanmujiState>) -> Result<String> {
+async fn loginCheck(login_data: Json<QrCode>, state: &State<DanmujiState>) -> DanmujiResult<String> {
     let QrCode { url: _, oauthKey } = login_data.into_inner();
     let mut headers = header::HeaderMap::new();
     headers.insert(
@@ -153,7 +151,7 @@ async fn loginCheck(login_data: Json<QrCode>, state: &State<DanmujiState>) -> Re
 }
 
 #[post("/logout")]
-async fn logout(state: &State<DanmujiState>) -> Result<String> {
+async fn logout(state: &State<DanmujiState>) -> DanmujiResult<String> {
     let mut config = state.config.lock().await;
     config.take();
     Ok("".to_string())
@@ -204,7 +202,7 @@ struct BulletScreenData {
 /// Connect to the given room id using the user credential we hold
 /// and start the websocket client to monitor incoming messages
 #[get("/roomInit/<roomId>")]
-async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> Result<String> {
+async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> DanmujiResult<String> {
     let state = state.config.lock().await;
     if let Some(state) = state.as_ref() {
         let ws = RoomConfig::fetch(roomId, state.raw_cookie.as_str())
@@ -260,7 +258,7 @@ async fn main() {
     println!("Rocket: deorbit.");
 }
 
-fn save_user_config(config: &UserConfig) -> Result<()> {
+fn save_user_config(config: &UserConfig) -> DanmujiResult<()> {
     let options = OpenOptions::new()
         .write(true)
         .create(true)

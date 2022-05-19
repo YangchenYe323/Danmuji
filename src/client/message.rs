@@ -9,7 +9,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::read::ZlibDecoder;
 use rocket::serde::{Deserialize, Serialize};
 
-use crate::Result;
+use crate::DanmujiResult;
 
 // header length is fixed 16
 const HEADER_LENGTH: u16 = 16;
@@ -58,7 +58,7 @@ impl BiliWebsocketMessage {
     }
 
     // construct from binary (received from websocket server)
-    pub fn from_binary(mut buf: Vec<u8>) -> Result<Self> {
+    pub fn from_binary(mut buf: Vec<u8>) -> DanmujiResult<Self> {
         // parse header
         let (header, _) = buf.split_at(HEADER_LENGTH as usize);
         let header = BiliWebsocketHeader::from_vec(header);
@@ -78,6 +78,8 @@ impl BiliWebsocketMessage {
     }
 
     /// Consume the message and unpack all the inner messages
+    // todo: This method should ideally return a vector of Result<BiliWebsocketInner>
+    // todo: to propagate parsing error upward, so that we can get rid of the unwraps
     pub fn parse(self) -> Vec<BiliWebsocketInner> {
         let BiliWebsocketMessage { header, data } = self;
         match header.op {
@@ -119,6 +121,8 @@ impl BiliWebsocketMessage {
 
             _ => {
                 // we currently don't deal with client-sent messages
+                // but this could be useful if we'are gonna implement something
+                // lika a mock BiliWebsocket Server
                 warn!("Unexpected Op Type");
                 vec![]
             }
@@ -127,7 +131,7 @@ impl BiliWebsocketMessage {
 }
 
 // decompressed buffer contains one or more
-// messages, we will disect them one by one
+// messages, we will extract them one by one
 fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
     let mut inners = vec![];
 
@@ -137,6 +141,7 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
     let max_length = buf.len();
 
     while offset < max_length {
+        // first parse current header
         let header = BiliWebsocketHeader::from_vec(cur_buf);
         let packet_length = header.packet_length;
 
@@ -144,6 +149,7 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
         // next_buf: the rest
         let (this_buf, next_buf) = cur_buf.split_at(packet_length as usize);
 
+        // todo: get rid of this unwrap
         let this_inner = BiliWebsocketInner::from_binary(this_buf).unwrap();
         inners.push(this_inner);
 
@@ -268,7 +274,7 @@ impl From<u32> for OpType {
 /// when websocket connection is established
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
-pub struct FirstSecurityData {
+struct FirstSecurityData {
     clientver: &'static str,
     platform: &'static str,
     protover: u64,
@@ -306,6 +312,18 @@ pub struct BiliWebsocketInner {
     body: BiliWebsocketMessageBody,
 }
 
+impl BiliWebsocketInner {
+
+    pub fn get_op_type(&self) -> OpType {
+        self.header.op
+    }
+
+    /// Consume the message and return the body
+    pub fn into_body(self) -> BiliWebsocketMessageBody {
+        self.body
+    }
+}
+
 /// Message Body of a Bilibili's websocket message,
 /// variants corresponding to different [OpType]
 /// [OpType::HeartBeatReply] -> [BiliWebsocketMessageBody::RoomPopularity]
@@ -329,10 +347,10 @@ pub enum BiliWebsocketMessageBody {
 /// Notification Body of Bilibili's Websocket message,
 /// This is basically all the interesting information about a live room
 /// (Danmu, Gift, Subscription, etc).
-type NotificationBody = serde_json::Value;
+pub type NotificationBody = serde_json::Value;
 
 impl BiliWebsocketInner {
-    fn from_binary(buf: &[u8]) -> Result<Self> {
+    fn from_binary(buf: &[u8]) -> DanmujiResult<Self> {
         // sanity check
         assert!(HEADER_LENGTH as usize <= buf.len());
 
