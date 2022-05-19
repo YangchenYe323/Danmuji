@@ -2,7 +2,7 @@
 //! Websocket Client that is a wrapper around [websocket](https://docs.rs/websocket/latest/websocket/),
 //! that encapsulates bilibili's network protocol, and exposes a unified publi API
 
-mod common;
 mod biliclient;
+mod common;
 
 pub use biliclient::BiliClient;

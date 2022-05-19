@@ -1,132 +1,215 @@
+//! This module implements the BiliClient type,
+//! which wraps around rust-websocket with specific support
+//! for Bilibili live's protocol and message encoding/decoding
+
 use std::{
-	sync::{
-		Arc,
-		atomic::AtomicBool, Mutex, mpsc::Receiver,
-	}, time::Duration
+    sync::{atomic::{AtomicBool, Ordering}, mpsc::Receiver, Arc, Mutex},
+    time::Duration, thread::JoinHandle,
 };
 
-use tracing::info;
+use tracing::{info, error};
 use websocket::Message;
 
-use crate::{Result, core::message::BiliWebsocketMessage};
+use crate::{core::message::BiliWebsocketMessage, Result};
 
 use super::common::BiliMessage;
 
+// Bilibili's Websocket URL
 const URL: &'static str = "ws://broadcastlv.chat.bilibili.com:2244/sub";
 
-/// The wrapper type around rust's websocket client 
+pub type Consumer = Receiver<BiliMessage>;
+
+/// The wrapper type around rust's websocket client
 /// functionality, that adds specific support for Bilibili's
 /// websocket API
 pub struct BiliClient {
-	// control flag
-	shutdown: Arc<AtomicBool>,
-	// downstream consumer of the messages we create
-	downstream: Arc<Mutex<Option<Receiver<BiliMessage>>>>,
+    // control flag
+    shutdown: Arc<AtomicBool>,
+    // downstream consumer of the messages we create
+    downstream: Arc<Mutex<Option<Consumer>>>,
+
+	worker: Option<JoinHandle<()>>,
 }
 
 impl BiliClient {
-	/// start a [BiliClient] instance that connects to @roomid
-	/// as the user of @userid
-	pub fn start(roomid: i64, userid: Option<u64>) -> Result<Self> {
-		let shutdown = Arc::new(AtomicBool::new(false));
-		let downstream = Arc::new(Mutex::new(None));
+    /// start a [BiliClient] instance that connects to @roomid
+    /// as the user of @userid
+    pub fn start(room_id: i64, user_id: Option<u64>) -> Result<Self> {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let downstream = Arc::new(Mutex::new(None));
 
-		let cli = websocket::ClientBuilder::new(URL)
-			.unwrap()
-			.connect_insecure()?;
-		
-		info!("Connection to Websocket Server established");
+		let config = ClientConfig {
+			room_id,
+			user_id,
+			shutdown: shutdown.clone(),
+			downstream: downstream.clone(),
+		};
 
-		let (mut reader, mut writer) = cli.split()?;
-		// send entry data
-		let entry_msg = BiliWebsocketMessage::entry(roomid, userid);
-		writer.send_message(&Message::binary(entry_msg.to_vec()))?;
-
-		let st = Arc::clone(&shutdown);
-		// start heartbeat thread
-		std::thread::spawn(move || {
-			// send heart beat
-			info!("Heart Beat Thread Started Running");
-			loop {
-
-				if st.load(std::sync::atomic::Ordering::Relaxed) {
-					break;
-				}
-
-				let heartbeat = BiliWebsocketMessage::heartbeat();
-				writer
-					.send_message(&Message::binary(heartbeat.to_vec()))
-					.unwrap();
-				std::thread::sleep(Duration::from_secs(20));
-			}
-
-			info!("Heart Beat Thread Shutdown");
-		});
-
-		let st = Arc::clone(&shutdown);
-		let consumer = Arc::clone(&downstream);
-		// start message thread
-		std::thread::spawn(move || {
-			for message in reader.incoming_messages() {
-				// check shutdown
-				if st.load(std::sync::atomic::Ordering::Relaxed) {
-					break;
-				}
-
-				match message {
-					Ok(message) => {
-						match message {
-							websocket::OwnedMessage::Binary(buf) => {
-								let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
-								
-								for inner in msg.parse() {
-									info!("Received Message: {:?}", inner);
-									// send to consumer
-								}
-							}
-		
-							_ => {
-								info!("{:?}", message);
-							}
-						}
-					}
-					// websocket is closed
-					Err(websocket::WebSocketError::NoDataAvailable) => {
-						warn!("Websocket is closed by server");
-						break;
-					}
-					//todo: don't know how to handle the other errors
-					_ => continue,
-				}
-            }
-
-			info!("Message Thread Shut down");
-		});
-
+		let worker = std::thread::spawn(move || start_worker(config));
+		      
 		Ok(Self {
 			shutdown,
 			downstream,
+			worker: Some(worker),
 		})
-	}
+    }
 
-	/// set up downstream consumer
-	pub fn set_downstream(&self, downstream: Receiver<BiliMessage>) {
-		*self.downstream.lock().unwrap() = Some(downstream);
-	}
+    /// set up downstream consumer
+    pub fn set_downstream(&self, downstream: Receiver<BiliMessage>) {
+        *self.downstream.lock().unwrap() = Some(downstream);
+    }
 
-	/// shutdown this client
-	/// return the downstream consumer so that it can be plugged
-	/// into other producers in the future
-	pub fn shutdown(self) -> Option<Receiver<BiliMessage>>{
-		self.downstream.lock().unwrap().take()
-		// self dropped here
-	}
-	
+    /// shutdown this client
+    /// return the downstream consumer so that it can be plugged
+    /// into other producers in the future
+    pub fn shutdown(self) -> Option<Receiver<BiliMessage>> {
+        self.downstream.lock().unwrap().take()
+        // self dropped here
+    }
 }
 
-// impl Drop for BiliClient {
-// 	fn drop(&mut self) {
-// 		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
-// 		// let thread be cleaned up
-// 	}
-// }
+impl Drop for BiliClient {
+	fn drop(&mut self) {
+		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+		// let thread be cleaned up
+		let worker = self.worker.take();
+		if let Some(worker) = worker {
+			worker.join().unwrap();
+			info!("BiliClient Worker Thread Collected, Termintating...")
+		}
+	}
+}
+
+#[derive(Debug, Clone)]
+struct ClientConfig {
+    room_id: i64,
+    user_id: Option<u64>,
+    // shared with the top-level Client Handle & will be modified
+    // by the handle to signal termination
+    shutdown: Arc<AtomicBool>,
+    // shared with the top-level Client Handle & will be set
+    // by the handle to signal termination
+    downstream: Arc<Mutex<Option<Consumer>>>,
+}
+
+/// The result of a client's worker thread
+#[derive(Debug)]
+enum ClientResult {
+    // Client is terminated by the user
+    // Just clean up and return
+    Terminated,
+    // Client's connection is accidentally closed
+    // by the server, try to re-run another connection
+    LostConnection,
+}
+
+fn start_worker(config: ClientConfig) {
+    loop {
+        let cfg = config.clone();
+        let worker_handle = std::thread::spawn(move || -> Result<ClientResult> {
+            let ClientConfig {
+                room_id,
+                user_id,
+                shutdown,
+                downstream,
+            } = cfg;
+
+			let cli = websocket::ClientBuilder::new(URL)
+				.unwrap()
+				.connect_insecure()?;
+			
+			let (mut reader, mut writer) = cli.split()?;
+
+			// send entry data
+			let entry_msg = BiliWebsocketMessage::entry(room_id, user_id);
+			writer.send_message(&Message::binary(entry_msg.to_vec()))?; 
+
+			let st = Arc::clone(&shutdown);
+			// start heartbeat thread
+			std::thread::spawn(move || {
+				// send heart beat
+				info!("Heart Beat Thread Started Running");
+				loop {
+					if st.load(std::sync::atomic::Ordering::Relaxed) {
+						break;
+					}
+	
+					let heartbeat = BiliWebsocketMessage::heartbeat();
+					
+					let res = writer.send_message(&Message::binary(heartbeat.to_vec()));
+
+					if res.is_err() {
+						debug!("HeartBeat Thread Error {:?}", res);
+						break;
+					}
+					
+					std::thread::sleep(Duration::from_secs(20));
+				}
+	
+				info!("Heart Beat Thread Shutdown");
+			});
+
+			// reader
+			let result = loop {
+				if shutdown.load(Ordering::Relaxed) {
+					break ClientResult::Terminated;
+				}
+				let message = reader.recv_message();
+				match message {
+                    Ok(message) => {
+                        match message {
+                            websocket::OwnedMessage::Binary(buf) => {
+                                let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
+
+                                for inner in msg.parse() {
+                                    info!("Received Message: {:?}", inner);
+                                    // send to consumer
+                                }
+                            }
+
+							websocket::OwnedMessage::Close(_) => {
+								break ClientResult::LostConnection;
+							}
+
+                            _ => {
+                                info!("{:?}", message);
+                            }
+                        }
+                    }
+                    // websocket error
+                    Err(err) => {
+						error!("{}", err);
+						break ClientResult::LostConnection;
+                    }
+                }
+			};
+
+			Ok(result)
+        });
+
+		// during normal execution, worker_handle runs
+		// indefinitely until either: (a). shutdown flag is set externally
+		// or (b). Connection closed by Server
+		// Both cases are handled below
+		let result = worker_handle.join().unwrap();
+
+		match result {
+			Ok(ClientResult::Terminated) => break,
+
+			Ok(ClientResult::LostConnection) => {
+				info!("Websocket connection lost by accident, Reconnecting...");
+				continue;
+			}
+
+			Err(err) => {
+				error!("Websocket Error: {}, try reconnecting..", err);
+				continue;
+			}
+		}
+
+    }
+
+	// terminated
+	assert!(config.shutdown.load(Ordering::Relaxed));
+	info!("Websocket terminated");
+}

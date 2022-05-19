@@ -13,11 +13,11 @@ extern crate rocket;
 
 use self::core::message::{BiliWebsocketHeader, BiliWebsocketMessage, OpType};
 use byteorder::{BigEndian, WriteBytesExt};
+use client::BiliClient;
 use config::BulletScreenConfig;
 pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
 use cors::CORS;
 use error::DanmujiError;
-use client::BiliClient;
 use reqwest::header;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::tokio::sync::Mutex;
@@ -27,9 +27,8 @@ use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 use std::time::Duration;
-use websocket::{ClientBuilder, Message, OwnedMessage};
 use tracing::{info, Level};
-
+use websocket::{ClientBuilder, Message, OwnedMessage};
 
 pub type Result<T> = std::result::Result<T, DanmujiError>;
 
@@ -240,12 +239,10 @@ async fn main() {
     // set log collector
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
-        .pretty()
         .with_max_level(Level::DEBUG)
         .init();
 
     info!("Logger Started");
-
 
     let config = load_user_config();
 

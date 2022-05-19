@@ -61,7 +61,7 @@ impl From<serde_json::Error> for DanmujiError {
 }
 
 impl From<websocket::WebSocketError> for DanmujiError {
-    fn from(err: websocket::WebSocketError) ->DanmujiError {
+    fn from(err: websocket::WebSocketError) -> DanmujiError {
         DanmujiError::WebsocketError(err.to_string())
     }
 }

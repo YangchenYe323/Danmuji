@@ -25,9 +25,9 @@ const SEQ: u32 = 1;
 /// [16 bytes header][data]
 #[derive(Debug, PartialEq, Eq)]
 pub struct BiliWebsocketMessage {
-	// header for the entire frame
+    // header for the entire frame
     header: BiliWebsocketHeader,
-	// raw data of this frame
+    // raw data of this frame
     data: Vec<u8>,
 }
 
@@ -41,10 +41,10 @@ impl BiliWebsocketMessage {
         }
     }
 
-	// construct entry security message
+    // construct entry security message
     pub fn entry(room_id: i64, uid: Option<u64>) -> Self {
         let data = FirstSecurityData::new(room_id, uid);
-		let data_bytes = serde_json::to_vec(&data).unwrap();
+        let data_bytes = serde_json::to_vec(&data).unwrap();
 
         Self::new(data_bytes, OpType::Entry, 2)
     }
@@ -53,8 +53,8 @@ impl BiliWebsocketMessage {
     pub fn heartbeat() -> Self {
         // heartbeat message has not data
         let data = vec![];
-        
-		Self::new(data, OpType::HeartBeat, 2)
+
+        Self::new(data, OpType::HeartBeat, 2)
     }
 
     // construct from binary (received from websocket server)
@@ -69,7 +69,6 @@ impl BiliWebsocketMessage {
         Ok(Self { header, data: buf })
     }
 
-
     // serialize to a binary vector
     pub fn to_vec(&self) -> Vec<u8> {
         let mut buf = vec![];
@@ -78,10 +77,10 @@ impl BiliWebsocketMessage {
         buf
     }
 
-	/// Consume the message and unpack all the inner messages
-	pub fn parse(self) -> Vec<BiliWebsocketInner> {
-		let BiliWebsocketMessage { header, data } = self;
-		match header.op {
+    /// Consume the message and unpack all the inner messages
+    pub fn parse(self) -> Vec<BiliWebsocketInner> {
+        let BiliWebsocketMessage { header, data } = self;
+        match header.op {
             OpType::Notification => {
                 match header.protocol_version {
                     // data is zlib compressed
@@ -93,48 +92,44 @@ impl BiliWebsocketMessage {
                     }
                     // data is not compressed
                     _ => {
-                        vec![
-							BiliWebsocketInner {
-								header,
-								body: BiliWebsocketMessageBody::Notification(
-									serde_json::from_slice(&data[..]).unwrap()
-								)
-							}
-						]
+                        vec![BiliWebsocketInner {
+                            header,
+                            body: BiliWebsocketMessageBody::Notification(
+                                serde_json::from_slice(&data[..]).unwrap(),
+                            ),
+                        }]
                     }
                 }
             }
             OpType::EntryReply => {
-				vec![BiliWebsocketInner {
-					header,
-					body: BiliWebsocketMessageBody::EntryReply,
-				}]
-			}
+                vec![BiliWebsocketInner {
+                    header,
+                    body: BiliWebsocketMessageBody::EntryReply,
+                }]
+            }
 
-			OpType::HeartBeatReply => {
-				let mut cursor = Cursor::new(data);
-				let popularity = cursor.read_i32::<BigEndian>().unwrap_or(0);
-				vec![
-					BiliWebsocketInner {
-						header,
-						body: BiliWebsocketMessageBody::RoomPopularity(popularity),
-					}
-				]
-			}
+            OpType::HeartBeatReply => {
+                let mut cursor = Cursor::new(data);
+                let popularity = cursor.read_i32::<BigEndian>().unwrap_or(0);
+                vec![BiliWebsocketInner {
+                    header,
+                    body: BiliWebsocketMessageBody::RoomPopularity(popularity),
+                }]
+            }
 
-			_ => {
-				// we currently don't deal with client-sent messages
-				warn!("Unexpected Op Type");
-				vec![]
-			}
+            _ => {
+                // we currently don't deal with client-sent messages
+                warn!("Unexpected Op Type");
+                vec![]
+            }
         }
-	}
+    }
 }
 
 // decompressed buffer contains one or more
 // messages, we will disect them one by one
 fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
-	let mut inners = vec![];
+    let mut inners = vec![];
 
     let mut cur_buf = &buf[..];
 
@@ -145,19 +140,19 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
         let header = BiliWebsocketHeader::from_vec(cur_buf);
         let packet_length = header.packet_length;
 
-		// this_buf: buffer for current inner
-		// next_buf: the rest
+        // this_buf: buffer for current inner
+        // next_buf: the rest
         let (this_buf, next_buf) = cur_buf.split_at(packet_length as usize);
 
-		let this_inner = BiliWebsocketInner::from_binary(this_buf).unwrap();
-		inners.push(this_inner);
+        let this_inner = BiliWebsocketInner::from_binary(this_buf).unwrap();
+        inners.push(this_inner);
 
         cur_buf = next_buf;
 
         offset += packet_length as usize;
     }
 
-	inners
+    inners
 }
 
 // Header Format:
@@ -303,12 +298,12 @@ impl FirstSecurityData {
 /// and the server might compress a vector of [BiliWebsocketInner] in a single frame it sends,
 /// i.e., one [BiliWebsocketMessage] can parse to multiple [BiliWebsocketInner]s,
 /// or it can contain only one [BiliWebsocketInner], which is tricky.
-/// 
+///
 #[derive(Debug)]
 pub struct BiliWebsocketInner {
-	// inner has its own header
-	header: BiliWebsocketHeader,
-	body: BiliWebsocketMessageBody,
+    // inner has its own header
+    header: BiliWebsocketHeader,
+    body: BiliWebsocketMessageBody,
 }
 
 /// Message Body of a Bilibili's websocket message,
@@ -316,16 +311,16 @@ pub struct BiliWebsocketInner {
 /// [OpType::HeartBeatReply] -> [BiliWebsocketMessageBody::RoomPopularity]
 /// [OpType::Notification] -> [BiliWebsocketMessageBody::Notification]
 /// [OpType::EntryReply] -> [BiliWebsocketMessageBody::EntryReply]
-/// 
-/// note: only the server-sent operations are represented here for furthr processing, 
-/// and client-sent operations are directly constructed 
+///
+/// note: only the server-sent operations are represented here for furthr processing,
+/// and client-sent operations are directly constructed
 /// to the top-level [BiliWebsocketMessage] type
 #[derive(Debug)]
 pub enum BiliWebsocketMessageBody {
     // contains a single i32, which is the current
     // room popularity
     RoomPopularity(i32),
-	// Notification
+    // Notification
     Notification(NotificationBody),
     // entry reply contains no data
     EntryReply,
@@ -337,51 +332,46 @@ pub enum BiliWebsocketMessageBody {
 type NotificationBody = serde_json::Value;
 
 impl BiliWebsocketInner {
-	fn from_binary(buf: &[u8]) -> Result<Self> {
-		// sanity check
-		assert!(HEADER_LENGTH as usize <= buf.len());
+    fn from_binary(buf: &[u8]) -> Result<Self> {
+        // sanity check
+        assert!(HEADER_LENGTH as usize <= buf.len());
 
-		let (header, content) = buf.split_at(HEADER_LENGTH as usize);
+        let (header, content) = buf.split_at(HEADER_LENGTH as usize);
 
-		let header = BiliWebsocketHeader::from_vec(header);
-		
-		let body = match header.op {
-			OpType::Notification => {
-				let content_buf = if header.protocol_version == 2 {
-					// zlib
-					let mut z = ZlibDecoder::new(Cursor::new(content));
-					let mut decompressed_buf = vec![];
-					z.read_to_end(&mut decompressed_buf).unwrap();
-					decompressed_buf
-				} else {
-					content.to_vec()
-				};
-				
-				BiliWebsocketMessageBody::Notification(serde_json::from_slice(&content_buf[..]).unwrap())
-			}
+        let header = BiliWebsocketHeader::from_vec(header);
 
-			OpType::EntryReply => {
-				BiliWebsocketMessageBody::EntryReply
-			}
+        let body = match header.op {
+            OpType::Notification => {
+                let content_buf = if header.protocol_version == 2 {
+                    // zlib
+                    let mut z = ZlibDecoder::new(Cursor::new(content));
+                    let mut decompressed_buf = vec![];
+                    z.read_to_end(&mut decompressed_buf).unwrap();
+                    decompressed_buf
+                } else {
+                    content.to_vec()
+                };
 
-			OpType::HeartBeatReply => {
-				let mut cursor = Cursor::new(content);
-				let popularity = cursor.read_i32::<BigEndian>().unwrap_or(0);
-				
-				BiliWebsocketMessageBody::RoomPopularity(popularity)
-			}
+                BiliWebsocketMessageBody::Notification(
+                    serde_json::from_slice(&content_buf[..]).unwrap(),
+                )
+            }
 
-			_ => unimplemented!()
-		};
+            OpType::EntryReply => BiliWebsocketMessageBody::EntryReply,
 
-		Ok(Self {
-			header,
-			body,
-		})
+            OpType::HeartBeatReply => {
+                let mut cursor = Cursor::new(content);
+                let popularity = cursor.read_i32::<BigEndian>().unwrap_or(0);
 
-	}
+                BiliWebsocketMessageBody::RoomPopularity(popularity)
+            }
+
+            _ => unimplemented!(),
+        };
+
+        Ok(Self { header, body })
+    }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -448,10 +438,7 @@ mod tests {
             field2: "Hello World".to_string(),
         };
 
-        let msg = BiliWebsocketMessage::new(
-			serde_json::to_vec(&data).unwrap(), 
-			OpType::Entry, 
-			2);
+        let msg = BiliWebsocketMessage::new(serde_json::to_vec(&data).unwrap(), OpType::Entry, 2);
 
         let buf = msg.to_vec();
         let recovered_msg = BiliWebsocketMessage::from_binary(buf).unwrap();
