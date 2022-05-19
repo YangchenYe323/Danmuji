@@ -11,11 +11,6 @@ use rocket::serde::{Deserialize, Serialize};
 
 use crate::DanmujiResult;
 
-// header length is fixed 16
-const HEADER_LENGTH: u16 = 16;
-// don't know what it's for
-const SEQ: u32 = 1;
-
 /// Struct representing BiliBili's top-level websocket message frame.
 /// An entire frame is parsed into a [BiliWebsocketMessage], which can be
 /// then parsed into one or more [BiliWebsocketInner] that contains
@@ -149,7 +144,7 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
         // next_buf: the rest
         let (this_buf, next_buf) = cur_buf.split_at(packet_length as usize);
 
-        // todo: get rid of this unwrap
+        // todo: get rid of this unwrap by returning a Result
         let this_inner = BiliWebsocketInner::from_binary(this_buf).unwrap();
         inners.push(this_inner);
 
@@ -161,6 +156,10 @@ fn process_zlib_data(buf: Vec<u8>) -> Vec<BiliWebsocketInner> {
     inners
 }
 
+// header length is fixed 16
+const HEADER_LENGTH: u16 = 16;
+// don't know what's for, just 1
+const SEQ: u32 = 1;
 // Header Format:
 // offset    length    type    endian    name           note
 // 0         4         i32     Big       packet-length
@@ -225,7 +224,8 @@ impl BiliWebsocketHeader {
         // write seq id
         header.write_u32::<BigEndian>(self.seq).unwrap();
 
-        assert_eq!(16, header.len());
+        // sanity check
+        assert_eq!(HEADER_LENGTH as usize, header.len());
         header
     }
 }
@@ -313,7 +313,6 @@ pub struct BiliWebsocketInner {
 }
 
 impl BiliWebsocketInner {
-
     pub fn get_op_type(&self) -> OpType {
         self.header.op
     }
@@ -384,6 +383,7 @@ impl BiliWebsocketInner {
                 BiliWebsocketMessageBody::RoomPopularity(popularity)
             }
 
+            // currently don't deal with client-sent op types
             _ => unimplemented!(),
         };
 

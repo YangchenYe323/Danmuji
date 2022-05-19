@@ -74,7 +74,7 @@ impl DanmuMessage {
 }
 
 impl DanmuMessage {
-    fn from_raw(value: &NotificationBody) -> Option<DanmuMessage>{
+    fn from_raw(value: &NotificationBody) -> Option<DanmuMessage> {
         let info = value.get("info")?;
         let info = info.as_array()?;
         let danmu_info = info[0].as_array()?;
@@ -112,7 +112,7 @@ impl DanmuMessage {
         let medal = if let Some(medal) = medal_info {
             let level = medal[0].as_u64().unwrap_or(0);
             let name = medal[1].as_str().unwrap_or("").to_string();
-            let streamer_name= medal[2].as_str().unwrap_or("").to_string();
+            let streamer_name = medal[2].as_str().unwrap_or("").to_string();
             let streamer_roomid = medal[3].as_u64().unwrap_or(0);
             Some(Medal {
                 level,
@@ -123,7 +123,7 @@ impl DanmuMessage {
         } else {
             None
         };
-        
+
         // 用户等级
         let ul_info = info[4].as_array();
         let (ul, ul_rank) = if let Some(ul_info) = ul_info {
@@ -137,7 +137,7 @@ impl DanmuMessage {
 
         let guard_info = info[7].as_u64().unwrap_or(0);
         let guard: GuardType = guard_info.into();
-        
+
         Some(DanmuMessage {
             uid,
             uname,
@@ -200,12 +200,10 @@ impl BiliMessage {
                 let cmd = cmd.as_str()?;
                 match cmd {
                     "DANMU_MSG" => {
-                        DanmuMessage::from_raw(&notification).map(|msg| 
-                            BiliMessage::Danmu(msg)
-                        )
+                        DanmuMessage::from_raw(&notification).map(|msg| BiliMessage::Danmu(msg))
                     }
-                    
-                    _ => None
+
+                    _ => None,
                 }
             }
             super::BiliWebsocketMessageBody::EntryReply => None,

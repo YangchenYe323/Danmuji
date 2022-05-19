@@ -6,15 +6,6 @@ mod common;
 mod message;
 
 pub use biliclient::BiliClient;
-pub use common::{
-	BiliMessage,
-	DanmuMessage,
-	GuardType,
-	Medal,
-};
+pub use common::{BiliMessage, DanmuMessage, GuardType, Medal};
 
-pub(crate) use self::message::{
-	BiliWebsocketInner,
-	BiliWebsocketMessageBody,
-	NotificationBody,
-};
+pub(crate) use self::message::{BiliWebsocketInner, BiliWebsocketMessageBody, NotificationBody};

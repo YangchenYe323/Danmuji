@@ -88,7 +88,10 @@ async fn getQrCode() -> DanmujiResult<Json<QrCode>> {
 }
 
 #[post("/loginCheck", data = "<login_data>")]
-async fn loginCheck(login_data: Json<QrCode>, state: &State<DanmujiState>) -> DanmujiResult<String> {
+async fn loginCheck(
+    login_data: Json<QrCode>,
+    state: &State<DanmujiState>,
+) -> DanmujiResult<String> {
     let QrCode { url: _, oauthKey } = login_data.into_inner();
     let mut headers = header::HeaderMap::new();
     headers.insert(

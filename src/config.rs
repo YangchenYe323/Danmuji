@@ -1,12 +1,6 @@
 use crate::{
-    error::DanmujiError, 
-    BulletScreenPropertyResponse, 
-    DanmujiResult, 
-    RoomInitResponse, 
-    RoomResponse,
-    UserInfoResponse, 
-    WsConfigResponse, 
-    USER_AGENT,
+    error::DanmujiError, BulletScreenPropertyResponse, DanmujiResult, RoomInitResponse,
+    RoomResponse, UserInfoResponse, WsConfigResponse, USER_AGENT,
 };
 use std::collections::HashMap;
 
