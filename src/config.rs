@@ -6,10 +6,9 @@ use std::collections::HashMap;
 
 use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue};
-use rocket::serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct UserConfig {
     // cookie used to access bilibili server
     pub raw_cookie: String,
@@ -43,7 +42,6 @@ impl UserConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct User {
     pub uid: u64,
     pub uname: String,
@@ -63,7 +61,6 @@ pub struct User {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct Cookie {
     DedeUserID: String,
     bili_jct: String,
@@ -191,7 +188,6 @@ impl RoomConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct RoomInit {
     pub room_id: i64,
     pub short_id: i64,
@@ -225,7 +221,6 @@ impl RoomInit {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct Room {
     // room id
     pub roomid: String,
@@ -242,7 +237,6 @@ pub struct Room {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct WsConfig {
     pub group: String,
     pub business_id: i32,
@@ -292,7 +286,6 @@ impl WsConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct WsHost {
     pub host: String,
     pub port: i64,
@@ -301,7 +294,6 @@ pub struct WsHost {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct BulletScreenConfig {
     pub bubble: i64,
     pub bubble_color: String,
@@ -310,7 +302,6 @@ pub struct BulletScreenConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct BulletScreen {
     pub color: i64,
     pub length: i64,

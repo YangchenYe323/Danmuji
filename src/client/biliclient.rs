@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 
-use tracing::{error, info};
+use tracing::{error, info, debug};
 use websocket::Message;
 
 use crate::DanmujiResult;
@@ -23,7 +23,7 @@ use super::{common::BiliMessage, message::BiliWebsocketMessage};
 const URL: &'static str = "ws://broadcastlv.chat.bilibili.com:2244/sub";
 
 // consumer type
-pub type Consumer = Sender<BiliMessage>;
+pub type Consumer = tokio::sync::broadcast::Sender<BiliMessage>;
 
 /// The wrapper type around rust's websocket client
 /// functionality, that adds specific support for Bilibili's
@@ -38,11 +38,20 @@ pub struct BiliClient {
 }
 
 impl BiliClient {
+
+	pub fn new(downstream: Consumer) -> Self {
+		Self { 
+			shutdown: Arc::new(AtomicBool::new(false)), 
+			downstream: Arc::new(Mutex::new(Some(downstream))), 
+			worker: None
+		}
+	}
+
     /// start a [BiliClient] instance that connects to @roomid
     /// as the user of @userid
-    pub fn start(room_id: i64, user_id: Option<u64>) -> DanmujiResult<Self> {
-        let shutdown = Arc::new(AtomicBool::new(false));
-        let downstream = Arc::new(Mutex::new(None));
+    pub fn start(&mut self, room_id: i64, user_id: Option<u64>) -> DanmujiResult<()> {
+        let shutdown = Arc::clone(&self.shutdown);
+        let downstream = Arc::clone(&self.downstream);
 
         let config = ClientConfig {
             room_id,
@@ -53,11 +62,9 @@ impl BiliClient {
 
         let worker = std::thread::spawn(move || start_worker(config));
 
-        Ok(Self {
-            shutdown,
-            downstream,
-            worker: Some(worker),
-        })
+		self.worker = Some(worker);
+
+        Ok(())
     }
 
     /// set up downstream consumer
@@ -202,6 +209,7 @@ fn start_worker(config: ClientConfig) {
                 }
             };
 
+			// connection terminated somehow
             Ok(result)
         });
 

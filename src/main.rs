@@ -7,26 +7,22 @@ mod config;
 mod cors;
 mod error;
 
-#[macro_use]
-extern crate rocket;
-
-use byteorder::{BigEndian, WriteBytesExt};
-use client::BiliClient;
+use axum::extract::ws::Message;
+use client::{BiliClient, BiliMessage};
 use config::BulletScreenConfig;
 pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
 use cors::CORS;
 use error::DanmujiError;
+use futures::{StreamExt, SinkExt};
 use reqwest::header;
-use rocket::serde::{json::Json, Deserialize, Serialize};
-use rocket::tokio::sync::Mutex;
-use rocket::{Build, State};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{
+    Arc, Mutex
+};
 use tracing::{info, Level};
-use websocket::{ClientBuilder, Message, OwnedMessage};
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
@@ -34,7 +30,6 @@ pub const USER_AGENT: &'static str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) 
 
 /// QrCode Url For Login
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct QrCode {
     url: String,
     oauthKey: String,
@@ -42,7 +37,6 @@ pub struct QrCode {
 
 /// QrCode api response
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 pub struct QrCodeResponse {
     code: u64,
     status: bool,
@@ -52,7 +46,6 @@ pub struct QrCodeResponse {
 
 /// Login Check Response
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct LoginResponse {
     code: u64,
     status: bool,
@@ -60,7 +53,6 @@ struct LoginResponse {
 
 /// UserInfo Query Response
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct UserInfoResponse {
     code: String,
     msg: String,
@@ -68,100 +60,95 @@ struct UserInfoResponse {
     data: User,
 }
 
-#[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
 }
 
 /// get qrcode url for login
-#[get("/qrcode")]
-async fn getQrCode() -> DanmujiResult<Json<QrCode>> {
-    let cli = reqwest::ClientBuilder::new()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36")
-        .build()?;
-    let res = cli
-        .get("https://passport.bilibili.com/qrcode/getLoginUrl")
-        .send()
-        .await?;
-    let res: QrCodeResponse = res.json().await?;
-    Ok(Json(res.data))
-}
+// async fn getQrCode() -> DanmujiResult<Json<QrCode>> {
+//     let cli = reqwest::ClientBuilder::new()
+//         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36")
+//         .build()?;
+//     let res = cli
+//         .get("https://passport.bilibili.com/qrcode/getLoginUrl")
+//         .send()
+//         .await?;
+//     let res: QrCodeResponse = res.json().await?;
+//     Ok(Json(res.data))
+// }
 
-#[post("/loginCheck", data = "<login_data>")]
-async fn loginCheck(
-    login_data: Json<QrCode>,
-    state: &State<DanmujiState>,
-) -> DanmujiResult<String> {
-    let QrCode { url: _, oauthKey } = login_data.into_inner();
-    let mut headers = header::HeaderMap::new();
-    headers.insert(
-        "referer",
-        header::HeaderValue::from_static("https://passport.bilibili.com/login"),
-    );
-    headers.insert("user-agent", header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36"));
+// async fn loginCheck(
+//     login_data: Json<QrCode>,
+//     state: &State<DanmujiState>,
+// ) -> DanmujiResult<String> {
+//     let QrCode { url: _, oauthKey } = login_data.into_inner();
+//     let mut headers = header::HeaderMap::new();
+//     headers.insert(
+//         "referer",
+//         header::HeaderValue::from_static("https://passport.bilibili.com/login"),
+//     );
+//     headers.insert("user-agent", header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36"));
 
-    let mut form = vec![];
-    form.push(("oauthKey", oauthKey));
-    form.push(("gourl", "https://www.bilibili.com/".to_string()));
+//     let mut form = vec![];
+//     form.push(("oauthKey", oauthKey));
+//     form.push(("gourl", "https://www.bilibili.com/".to_string()));
 
-    let cli = reqwest::ClientBuilder::new()
-        .default_headers(headers)
-        .build()?;
+//     let cli = reqwest::ClientBuilder::new()
+//         .default_headers(headers)
+//         .build()?;
 
-    let res = cli
-        .post("https://passport.bilibili.com/qrcode/getLoginInfo")
-        .form(&form)
-        .send()
-        .await?;
+//     let res = cli
+//         .post("https://passport.bilibili.com/qrcode/getLoginInfo")
+//         .form(&form)
+//         .send()
+//         .await?;
 
-    let headers = res.headers().clone();
-    let login_res: LoginResponse = res.json().await?;
+//     let headers = res.headers().clone();
+//     let login_res: LoginResponse = res.json().await?;
 
-    println!("{:?}", login_res);
+//     println!("{:?}", login_res);
 
-    if login_res.status {
-        // update user config
-        let cookie = headers.get_all("Set-Cookie");
+//     if login_res.status {
+//         // update user config
+//         let cookie = headers.get_all("Set-Cookie");
 
-        let mut cookie_set = HashSet::new();
+//         let mut cookie_set = HashSet::new();
 
-        for c in cookie {
-            let cookie_terms = c.to_str()?.split(";").map(str::to_string);
-            for term in cookie_terms {
-                cookie_set.insert(term);
-            }
-        }
+//         for c in cookie {
+//             let cookie_terms = c.to_str()?.split(";").map(str::to_string);
+//             for term in cookie_terms {
+//                 cookie_set.insert(term);
+//             }
+//         }
 
-        let cookies: Vec<String> = cookie_set.into_iter().collect();
+//         let cookies: Vec<String> = cookie_set.into_iter().collect();
 
-        let cookie_str = cookies.join(";");
+//         let cookie_str = cookies.join(";");
 
-        println!("{}", cookie_str);
+//         println!("{}", cookie_str);
 
-        let config = UserConfig::fetch(cookie_str).await?;
-        println!("User Config: {:?}", config);
+//         let config = UserConfig::fetch(cookie_str).await?;
+//         println!("User Config: {:?}", config);
 
-        save_user_config(&config)?;
+//         save_user_config(&config)?;
 
-        // update user state
-        let mut state = state.config.lock().await;
-        *state = Some(config);
+//         // update user state
+//         let mut state = state.config.lock().await;
+//         *state = Some(config);
 
-        return Ok(String::from("Success"));
-    }
+//         return Ok(String::from("Success"));
+//     }
 
-    Ok(String::from("failed"))
-}
+//     Ok(String::from("failed"))
+// }
 
-#[post("/logout")]
-async fn logout(state: &State<DanmujiState>) -> DanmujiResult<String> {
-    let mut config = state.config.lock().await;
-    config.take();
-    Ok("".to_string())
-}
+// async fn logout(state: &State<DanmujiState>) -> DanmujiResult<String> {
+//     let mut config = state.config.lock().await;
+//     config.take();
+//     Ok("".to_string())
+// }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct RoomInitResponse {
     code: u8,
     msg: String,
@@ -170,7 +157,6 @@ struct RoomInitResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct RoomResponse {
     code: u8,
     msg: String,
@@ -179,7 +165,6 @@ struct RoomResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct WsConfigResponse {
     code: u8,
     message: String,
@@ -188,54 +173,56 @@ struct WsConfigResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-
 struct BulletScreenPropertyResponse {
     code: u8,
     data: BulletScreenData,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct BulletScreenData {
     property: BulletScreenConfig,
 }
 
-/// Interface for Test Use
-/// Connect to the given room id using the user credential we hold
-/// and start the websocket client to monitor incoming messages
-#[get("/roomInit/<roomId>")]
-async fn roomInit(roomId: u64, state: &State<DanmujiState>) -> DanmujiResult<String> {
-    let state = state.config.lock().await;
-    if let Some(state) = state.as_ref() {
-        let ws = RoomConfig::fetch(roomId, state.raw_cookie.as_str())
-            .await
-            .unwrap();
-        println!("{:?}", ws);
-
+// Interface for Test Use
+// Connect to the given room id using the user credential we hold
+// and start the websocket client to monitor incoming messages
+async fn roomInit(
+    Path(room_id): Path<i64>,
+    Extension(cli): Extension<Arc<Mutex<BiliClient>>>,
+    Extension(config): Extension<Arc<Option<UserConfig>>>
+) ->  &'static str {
         // bullet screen config
-        let bc = BulletScreenConfig::fetch(&ws, &state).await.unwrap();
-        println!("{:?}", bc);
-        let uid = state.user.uid;
+        // let bc = BulletScreenConfig::fetch(&ws, &state).await.unwrap();
+        // println!("{:?}", bc);
+        // let uid = state.user.uid;
 
-        let _cli = BiliClient::start(ws.room_init.room_id, Some(uid))?;
+    if let Some(config) = config.as_ref() {
+        let uid = config.user.uid;
+        {
+            let mut cli = cli.lock().unwrap();
+            cli.start(room_id, Some(uid)).unwrap();
+        }
     }
 
-    Ok("Hello".to_string())
+
+    "Hello"
 }
 
+use axum::{
+    extract::{Extension, Path},
+    extract::ws::{WebSocketUpgrade, WebSocket},
+    routing::get,
+    response::IntoResponse,
+    Router,
+};
+use tokio::sync::broadcast;
+
+#[derive(Clone)]
 struct DanmujiState {
-    config: Arc<Mutex<Option<UserConfig>>>,
+    tx: broadcast::Sender<BiliMessage>,
 }
 
-fn rocket(state: DanmujiState) -> rocket::Rocket<Build> {
-    rocket::build()
-        .attach(CORS)
-        .manage(state)
-        .mount("/", routes![index, getQrCode, loginCheck, logout, roomInit])
-}
-
-#[rocket::main]
+#[tokio::main]
 async fn main() {
     // set log collector
     tracing_subscriber::fmt()
@@ -243,22 +230,26 @@ async fn main() {
         .with_max_level(Level::DEBUG)
         .init();
 
-    info!("Logger Started");
+    let (tx, _rx) = broadcast::channel(100);
+    let cli = BiliClient::new(tx.clone());
+
+    let state = DanmujiState {
+        tx,
+    };
 
     let config = load_user_config();
 
-    println!("{:?}", config);
+    let app = Router::new()
+        .route("/ws", get(handler))
+        .route("/:room_id", get(roomInit))
+        .layer(Extension(Arc::new(Mutex::new(cli))))
+        .layer(Extension(state))
+        .layer(Extension(Arc::new(config)));
+    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 
-    let state = DanmujiState {
-        config: Arc::new(Mutex::new(config)),
-    };
-
-    let server = rocket(state);
-
-    let _result = server.launch().await;
-
-    // this is reachable only after `Shutdown::notify()` or `Ctrl+C`.
-    println!("Rocket: deorbit.");
 }
 
 fn save_user_config(config: &UserConfig) -> DanmujiResult<()> {
@@ -289,4 +280,43 @@ fn load_user_config() -> Option<UserConfig> {
         // no file found, return None
         None
     }
+}
+
+async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<DanmujiState>) -> impl IntoResponse {
+    ws.on_upgrade(|ws| handle_socket(ws, state))
+}
+
+async fn handle_socket(socket: WebSocket, state:DanmujiState) {
+    let (mut sender, mut receiver) = socket.split();
+    
+    // Subscribe before sending joined message.
+    let mut rx = state.tx.subscribe();
+
+    // This task will receive broadcast messages and send text message to our client.
+    let mut send_task = tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            // In any websocket error, break loop.
+            if sender.send(Message::Text(serde_json::to_string(&msg).unwrap())).await.is_err() {
+                break;
+            }
+        }
+    });
+
+    // Clone things we want to pass to the receiving task.
+    let tx = state.tx.clone();
+
+    // This task will receive messages from client and send them to broadcast subscribers.
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(Message::Text(text))) = receiver.next().await {
+            // Add username before message.
+        }
+    });
+
+    // If any one of the tasks exit, abort the other.
+    tokio::select! {
+        _ = (&mut send_task) => recv_task.abort(),
+        _ = (&mut recv_task) => send_task.abort(),
+    };
+
+    info!("Websocket Diconnected")
 }

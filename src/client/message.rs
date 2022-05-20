@@ -7,7 +7,8 @@ use std::io::{Cursor, Read};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::read::ZlibDecoder;
-use rocket::serde::{Deserialize, Serialize};
+use serde::{Serialize, Deserialize};
+use tracing::{warn, info, debug};
 
 use crate::DanmujiResult;
 
@@ -273,7 +274,6 @@ impl From<u32> for OpType {
 /// The first packet body sent to Bilibili Live
 /// when websocket connection is established
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
 struct FirstSecurityData {
     clientver: &'static str,
     platform: &'static str,
@@ -400,7 +400,6 @@ mod tests {
     use super::*;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq)]
-    #[serde(crate = "rocket::serde")]
     struct TestJsonData {
         field1: u32,
         field2: String,

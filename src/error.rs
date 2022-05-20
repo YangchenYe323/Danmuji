@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug, Responder)]
+#[derive(Error, Debug)]
 pub enum DanmujiError {
     #[error("Reqwest Error")]
     Reqwest(String),

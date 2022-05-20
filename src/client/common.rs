@@ -2,12 +2,15 @@
 //! public APIs through which users interact with Bilibili's Message
 
 use derive_getters::Getters;
-
+use serde::{Serialize, Deserialize};
 use super::{BiliWebsocketInner, NotificationBody};
+
 
 /// The type representing a Bilibili's message received
 /// by the client.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type", content = "body")]
 pub enum BiliMessage {
     /// Someone sent a Bullet Screen Comment
     Danmu(DanmuMessage),
@@ -16,7 +19,8 @@ pub enum BiliMessage {
 }
 
 /// The type representing a bullet screen message
-#[derive(Debug, Getters)]
+#[derive(Debug, Clone, Getters)]
+#[derive(Serialize, Deserialize)]
 pub struct DanmuMessage {
     // sender's uid
     uid: u64,
@@ -156,7 +160,8 @@ impl DanmuMessage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)] 
+#[derive(Serialize, Deserialize)]
 pub struct Medal {
     level: u64,
     name: String,
@@ -165,6 +170,8 @@ pub struct Medal {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum GuardType {
     // 不是大航海
     NoGuard,
