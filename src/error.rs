@@ -1,67 +1,51 @@
+use hyper::StatusCode;
+use axum::response::{
+    IntoResponse,
+    Response
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DanmujiError {
-    #[error("Reqwest Error")]
-    Reqwest(String),
-
-    #[error("Error Parsing Header")]
-    HeaderParse(String),
-
-    #[error("Invalid Header Value")]
-    InvalidHeaderValue(String),
-
-    #[error("Invalid Cookie String")]
-    CookieParse(String),
-
+    /// Http request error, e.g., fail to 
+    /// fetch UserInfo or login url from Bilibili's
+    /// API
+    #[error("HTTP Error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+    /// Fail to Parse header
+    #[error("Header Parsing Error: {0}")]
+    HeaderParse(#[from] reqwest::header::ToStrError),
+    /// Invalid Header Value
+    #[error("Invalid Header Value: {0}")]
+    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+    /// We need to parse SESSDATA, DedeUserID, bili_jct, etc fields from
+    /// cookie string. Throw the error if some field is missing
+    #[error("{0}")]
+    CookieParse(&'static str),
+    /// Forward IO Error
     #[error("IO Error")]
-    IoError(String),
-
-    #[error("Json Serialization Error")]
-    JsonError(String),
-
-    #[error("Websocket Error")]
-    WebsocketError(String),
+    IoError(#[from] std::io::Error),
+    /// Forward Json Parsing Error
+    #[error("{0}")]
+    JsonError(#[from] serde_json::Error),
+    /// Forward Websocket Error
+    #[error("{0}")]
+    WebsocketError(#[from] websocket::WebSocketError),
 }
 
 impl DanmujiError {
-    pub fn cookie(msg: &str) -> DanmujiError {
-        DanmujiError::CookieParse(msg.to_string())
+    // create cookie error
+    pub fn cookie(msg: &'static str) -> DanmujiError {
+        DanmujiError::CookieParse(msg)
     }
 }
 
-impl From<reqwest::Error> for DanmujiError {
-    fn from(err: reqwest::Error) -> DanmujiError {
-        DanmujiError::Reqwest(err.to_string())
-    }
-}
+impl IntoResponse for DanmujiError {
+    fn into_response(self) -> Response {
 
-impl From<reqwest::header::ToStrError> for DanmujiError {
-    fn from(err: reqwest::header::ToStrError) -> DanmujiError {
-        DanmujiError::HeaderParse(err.to_string())
-    }
-}
+        let body = self.to_string();
 
-impl From<reqwest::header::InvalidHeaderValue> for DanmujiError {
-    fn from(err: reqwest::header::InvalidHeaderValue) -> DanmujiError {
-        DanmujiError::HeaderParse(err.to_string())
-    }
-}
-
-impl From<std::io::Error> for DanmujiError {
-    fn from(err: std::io::Error) -> DanmujiError {
-        DanmujiError::IoError(err.to_string())
-    }
-}
-
-impl From<serde_json::Error> for DanmujiError {
-    fn from(err: serde_json::Error) -> DanmujiError {
-        DanmujiError::JsonError(err.to_string())
-    }
-}
-
-impl From<websocket::WebSocketError> for DanmujiError {
-    fn from(err: websocket::WebSocketError) -> DanmujiError {
-        DanmujiError::WebsocketError(err.to_string())
+        // its often easiest to implement `IntoResponse` by calling other implementations
+        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
     }
 }

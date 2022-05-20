@@ -24,7 +24,7 @@ use std::sync::{
     Arc, Mutex
 };
 use std::time::{Duration};
-use tracing::{info, Level, error, warn};
+use tracing::{info, Level, error, warn, debug};
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
@@ -231,6 +231,7 @@ async fn main() {
         .with_writer(std::io::stderr)
         .with_max_level(Level::DEBUG)
         .init();
+    info!("Logger Initialized");
 
     let (tx, _rx) = broadcast::channel(100);
     let cli = BiliClient::new(tx.clone());
@@ -244,9 +245,10 @@ async fn main() {
     let app = Router::new()
         .route("/ws", get(handler))
         .route("/:room_id", get(roomInit))
-        .layer(Extension(Arc::new(Mutex::new(cli))))
-        .layer(Extension(state))
-        .layer(Extension(Arc::new(config)));
+        .layer(Extension(Arc::new(Mutex::new(cli)))) // state: BiliClient
+        .layer(Extension(state)) // state: Synchronization States
+        .layer(Extension(Arc::new(config))); // state: User Configuration
+
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
@@ -285,7 +287,7 @@ fn load_user_config() -> Option<UserConfig> {
 }
 
 // heartbeat timeout in seconds
-const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(10);
+const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Websocket handler
 async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<DanmujiState>) -> impl IntoResponse {
@@ -323,10 +325,11 @@ async fn handle_socket(socket: WebSocket, state:DanmujiState) {
 
         loop {
             let mut recv_task = tokio::spawn(async move {
-                if let Some(Ok(Message::Ping(_))) = socket_receiver.next().await {
+                if let Some(Ok(msg)) = socket_receiver.next().await {
+                    debug!("Msg from websocket client: {:?}", msg);
                     return Some(socket_receiver);
                 }
-                // todo: process other kinds of user messages and errors
+                // todo: process other kinds of user messages and errors (Close frames, etc.)
                 None
             });
 
