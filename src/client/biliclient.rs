@@ -5,7 +5,6 @@
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::Sender,
         Arc, Mutex,
     },
     thread::JoinHandle,
@@ -47,8 +46,15 @@ impl BiliClient {
 		}
 	}
 
-    /// start a [BiliClient] instance that connects to @roomid
-    /// as the user of @userid
+    /// start a [BiliClient] instance that connects to specified room
+    /// as the given user
+	/// 
+	/// * `room_id` id of the connected room
+	/// * `user_id` id of user, 0 if not provided
+	/// 
+	/// # Note:
+	/// When user_id is 0, websocket sometimes fails to receive meaningful messages, so it
+	/// is recommended that a valid user_id be provided
     pub fn start(&mut self, room_id: i64, user_id: Option<u64>) -> DanmujiResult<()> {
         let shutdown = Arc::clone(&self.shutdown);
         let downstream = Arc::clone(&self.downstream);
@@ -68,8 +74,14 @@ impl BiliClient {
     }
 
     /// set up downstream consumer
-    pub fn set_downstream(&self, downstream: Consumer) {
-        *self.downstream.lock().unwrap() = Some(downstream);
+	/// return the old consumer if we currently hold one
+	/// 
+	/// * `downstream` new consumer
+    pub fn set_downstream(&self, downstream: Consumer) -> Option<Consumer> {
+		let mut ds = self.downstream.lock().unwrap();
+		let old = ds.take();
+        *ds = Some(downstream);
+		old
     }
 
     /// shutdown this client
@@ -81,17 +93,18 @@ impl BiliClient {
     }
 }
 
-// impl Drop for BiliClient {
-// 	fn drop(&mut self) {
-// 		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
-// 		// let thread be cleaned up
-// 		let worker = self.worker.take();
-// 		if let Some(worker) = worker {
-// 			worker.join().unwrap();
-// 			info!("BiliClient Worker Thread Collected, Termintating...")
-// 		}
-// 	}
-// }
+impl Drop for BiliClient {
+	fn drop(&mut self) {
+		// send shutdown signal to background threads
+		self.shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+		// let threads be cleaned up
+		let worker = self.worker.take();
+		if let Some(worker) = worker {
+			worker.join().unwrap();
+			info!("BiliClient Worker Thread Collected, Termintating...")
+		}
+	}
+}
 
 #[derive(Debug, Clone)]
 struct ClientConfig {
@@ -162,8 +175,9 @@ fn start_worker(config: ClientConfig) {
                 info!("Heart Beat Thread Shutdown");
             });
 
-            // reader
+            // reader loop
             let result = loop {
+				// check shutdown
                 if shutdown.load(Ordering::Relaxed) {
                     break ClientResult::Terminated;
                 }
@@ -171,6 +185,8 @@ fn start_worker(config: ClientConfig) {
                 match message {
                     Ok(message) => {
                         match message {
+							// currently Bilibili only sends binary message, so this is 
+							// the only case of interest
                             websocket::OwnedMessage::Binary(buf) => {
                                 let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
 
@@ -192,10 +208,12 @@ fn start_worker(config: ClientConfig) {
                                 }
                             }
 
+							// connection closed by server
                             websocket::OwnedMessage::Close(_) => {
                                 break ClientResult::LostConnection;
                             }
 
+							// should not reach here
                             _ => {
                                 info!("{:?}", message);
                             }
@@ -228,7 +246,7 @@ fn start_worker(config: ClientConfig) {
             }
 
             Err(err) => {
-                error!("Websocket Error: {}, try reconnecting..", err);
+                error!("Websocket Error: {}, try Reconnecting...", err);
                 continue;
             }
         }
