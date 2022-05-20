@@ -16,13 +16,15 @@ use error::DanmujiError;
 use futures::{StreamExt, SinkExt};
 use reqwest::header;
 use serde::{Deserialize, Serialize};
+use tokio::time::Instant;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
 use std::sync::{
     Arc, Mutex
 };
-use tracing::{info, Level};
+use std::time::{Duration};
+use tracing::{info, Level, error, warn};
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
@@ -282,17 +284,23 @@ fn load_user_config() -> Option<UserConfig> {
     }
 }
 
+// heartbeat timeout in seconds
+const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Websocket handler
 async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<DanmujiState>) -> impl IntoResponse {
     ws.on_upgrade(|ws| handle_socket(ws, state))
 }
 
+/// Handles a websocket connection
 async fn handle_socket(socket: WebSocket, state:DanmujiState) {
-    let (mut sender, mut receiver) = socket.split();
+    let (mut sender, receiver) = socket.split();
     
-    // Subscribe before sending joined message.
+    // state.tx is the upstream producer of all the bilibili messages 
+    // received from [BiliClient]
     let mut rx = state.tx.subscribe();
 
-    // This task will receive broadcast messages and send text message to our client.
+    // This task will receive incoming BiliMessages and forward to client
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             // In any websocket error, break loop.
@@ -302,20 +310,66 @@ async fn handle_socket(socket: WebSocket, state:DanmujiState) {
         }
     });
 
-    // Clone things we want to pass to the receiving task.
-    let tx = state.tx.clone();
 
-    // This task will receive messages from client and send them to broadcast subscribers.
-    let mut recv_task = tokio::spawn(async move {
-        while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            // Add username before message.
+    // This task will monitor user heartbeat, and abort connection
+    // if we don't receive heartbeat in a given timeout
+    let mut heartbeat_task = tokio::spawn(async move {
+        // move receiver into the future
+        let mut socket_receiver = receiver;
+
+        // this task monitors timer
+        let sleep = tokio::time::sleep(HEARTBEAT_TIMEOUT);
+        tokio::pin!(sleep);
+
+        loop {
+            let mut recv_task = tokio::spawn(async move {
+                if let Some(Ok(Message::Ping(_))) = socket_receiver.next().await {
+                    return Some(socket_receiver);
+                }
+                // todo: process other kinds of user messages and errors
+                None
+            });
+
+            tokio::select! {
+                _ = (&mut sleep) => {
+                    // timeout fired without heartbeat
+                    // abort connection
+                    recv_task.abort();
+                    break;
+                }
+                returned_receiver = (&mut recv_task) => {
+                    match returned_receiver {
+                        // received heartbeat
+                        Ok(Some(recv)) => {
+                            // reset receiver for next loop
+                            socket_receiver = recv;
+                            // reset timeout
+                            sleep.as_mut().reset(
+                                Instant::now() + HEARTBEAT_TIMEOUT
+                            )
+                        }
+                        
+                        // todo: is there a better return value?
+                        Ok(None) => {
+                            break;
+                        }
+
+                        Err(err) => {
+                            error!("{}", err);
+                            break;
+                        }
+                    }
+                }
+            };
         }
+
+        warn!("Heartbeat is not received in time");
     });
 
     // If any one of the tasks exit, abort the other.
     tokio::select! {
-        _ = (&mut send_task) => recv_task.abort(),
-        _ = (&mut recv_task) => send_task.abort(),
+        _ = (&mut send_task) => heartbeat_task.abort(),
+        _ = (&mut heartbeat_task) => send_task.abort(),
     };
 
     info!("Websocket Diconnected")
