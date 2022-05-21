@@ -3,6 +3,7 @@
 
 use derive_getters::Getters;
 use serde::{Serialize, Deserialize};
+use serde_json::{Value, Number};
 use super::{BiliWebsocketInner, NotificationBody};
 
 
@@ -81,11 +82,11 @@ impl DanmuMessage {
     fn from_raw(value: &NotificationBody) -> Option<DanmuMessage> {
         let info = value.get("info")?;
         let info = info.as_array()?;
-        let danmu_info = info[0].as_array()?;
+        let danmu_info = info.get(0)?.as_array()?;
 
-        let is_gift_auto = danmu_info[9].as_u64().unwrap_or(0);
+        let is_gift_auto = danmu_info.get(9)?.as_u64().unwrap_or(0);
         let is_gift_auto = is_gift_auto == 2;
-        let sent_time = danmu_info[4].as_u64().unwrap_or(0);
+        let sent_time = danmu_info.get(4).unwrap_or(&Value::Number(Number::from_f64(0.0).unwrap())).as_u64().unwrap_or(0);
 
         // 用array传是哪个天才想出来的？
         let sender_info = info[2].as_array()?;
@@ -114,16 +115,21 @@ impl DanmuMessage {
         // 勋章
         let medal_info = info[3].as_array();
         let medal = if let Some(medal) = medal_info {
-            let level = medal[0].as_u64().unwrap_or(0);
-            let name = medal[1].as_str().unwrap_or("").to_string();
-            let streamer_name = medal[2].as_str().unwrap_or("").to_string();
-            let streamer_roomid = medal[3].as_u64().unwrap_or(0);
-            Some(Medal {
-                level,
-                name,
-                streamer_name,
-                streamer_roomid,
-            })
+            // 勋章可能是[]
+            if medal.len() == 4 {
+                let level = medal[0].as_u64().unwrap_or(0);
+                let name = medal[1].as_str().unwrap_or("").to_string();
+                let streamer_name = medal[2].as_str().unwrap_or("").to_string();
+                let streamer_roomid = medal[3].as_u64().unwrap_or(0);
+                Some(Medal {
+                    level,
+                    name,
+                    streamer_name,
+                    streamer_roomid,
+                })
+            } else {
+                None
+            }
         } else {
             None
         };

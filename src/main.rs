@@ -249,7 +249,7 @@ async fn main() {
         .layer(Extension(state)) // state: Synchronization States
         .layer(Extension(Arc::new(config))); // state: User Configuration
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:9000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -291,11 +291,13 @@ const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Websocket handler
 async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<DanmujiState>) -> impl IntoResponse {
+    info!("Get Websocket Upgrade Request");
     ws.on_upgrade(|ws| handle_socket(ws, state))
 }
 
 /// Handles a websocket connection
 async fn handle_socket(socket: WebSocket, state:DanmujiState) {
+    info!("Weosocket Connection Established");
     let (mut sender, receiver) = socket.split();
     
     // state.tx is the upstream producer of all the bilibili messages 
@@ -337,6 +339,7 @@ async fn handle_socket(socket: WebSocket, state:DanmujiState) {
                 _ = (&mut sleep) => {
                     // timeout fired without heartbeat
                     // abort connection
+                    warn!("Heartbeat is not collected in time");
                     recv_task.abort();
                     break;
                 }
@@ -365,8 +368,6 @@ async fn handle_socket(socket: WebSocket, state:DanmujiState) {
                 }
             };
         }
-
-        warn!("Heartbeat is not received in time");
     });
 
     // If any one of the tasks exit, abort the other.
