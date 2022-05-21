@@ -1,4 +1,12 @@
+# compilation target
 /target
+
+# tmp scrape files
 /tmp
+
+# lock file
 Cargo.lock
-config.json
+
+# config
+user.json
+room.json
