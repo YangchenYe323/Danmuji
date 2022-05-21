@@ -8,7 +8,7 @@ use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
     // cookie used to access bilibili server
     pub raw_cookie: String,
@@ -32,7 +32,7 @@ impl UserConfig {
 
         let user_info: UserInfoResponse = res.json().await?;
         let user = user_info.data;
-        let cookie = produce_cookie_from_raw(&raw_cookie)?;
+        let cookie = Cookie::from_str(&raw_cookie)?;
         Ok(UserConfig {
             raw_cookie,
             user,
@@ -41,7 +41,7 @@ impl UserConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub uid: u64,
     pub uname: String,
@@ -60,7 +60,8 @@ pub struct User {
     pub billCoin: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+// todo: we can also parse expire date here
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cookie {
     DedeUserID: String,
     bili_jct: String,
@@ -69,62 +70,62 @@ pub struct Cookie {
     SESSDATA: String,
 }
 
-/// parse cookie from raw string
-pub fn produce_cookie_from_raw(raw_cookie: &str) -> DanmujiResult<Cookie> {
-    let mut cookie_map = HashMap::new();
+impl Cookie {
+    /// parse cookie from raw string
+    pub fn from_str(raw_cookie: &str) -> DanmujiResult<Cookie> {
+        let mut cookie_map = HashMap::new();
 
-    let raw_token = raw_cookie.split(";");
-    for token in raw_token {
-        let kv_pair: Vec<&str> = token.split("=").collect();
-        if kv_pair.len() == 2 {
-            cookie_map.insert(kv_pair[0], kv_pair[1]);
+        let raw_token = raw_cookie.split(";");
+        for token in raw_token {
+            let kv_pair: Vec<&str> = token.split("=").collect();
+            if kv_pair.len() == 2 {
+                cookie_map.insert(kv_pair[0], kv_pair[1]);
+            }
         }
+
+        println!("{:?}", cookie_map);
+
+        let cookie = Cookie {
+            DedeUserID: cookie_map
+                .get("DedeUserID")
+                .ok_or(DanmujiError::cookie("Missing DedeUserID"))?
+                .to_string(),
+            bili_jct: cookie_map
+                .get("bili_jct")
+                .ok_or(DanmujiError::cookie("Missing bili_jct"))?
+                .to_string(),
+            DedeUserID__ckMd5: cookie_map
+                .get("DedeUserID__ckMd5")
+                .ok_or(DanmujiError::cookie("Missing DedeUserID__ckMd5"))?
+                .to_string(),
+            sid: cookie_map
+                .get("sid")
+                .ok_or(DanmujiError::cookie("Missing sid"))?
+                .to_string(),
+            SESSDATA: cookie_map
+                .get("SESSDATA")
+                .ok_or(DanmujiError::cookie("Missing SESSDATA"))?
+                .to_string(),
+        };
+
+        Ok(cookie)
     }
-
-    println!("{:?}", cookie_map);
-
-    let cookie = Cookie {
-        DedeUserID: cookie_map
-            .get("DedeUserID")
-            .ok_or(DanmujiError::cookie("Missing DedeUserID"))?
-            .to_string(),
-        bili_jct: cookie_map
-            .get("bili_jct")
-            .ok_or(DanmujiError::cookie("Missing bili_jct"))?
-            .to_string(),
-        DedeUserID__ckMd5: cookie_map
-            .get("DedeUserID__ckMd5")
-            .ok_or(DanmujiError::cookie("Missing DedeUserID__ckMd5"))?
-            .to_string(),
-        sid: cookie_map
-            .get("sid")
-            .ok_or(DanmujiError::cookie("Missing sid"))?
-            .to_string(),
-        SESSDATA: cookie_map
-            .get("SESSDATA")
-            .ok_or(DanmujiError::cookie("Missing SESSDATA"))?
-            .to_string(),
-    };
-
-    Ok(cookie)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RoomConfig {
     pub room_init: RoomInit,
     pub room: Room,
-    pub ws: WsConfig,
 }
 
 impl RoomConfig {
     /// fetch needed information to construct RoomConfig
-    pub async fn fetch(room_id: u64, raw_cookie: &str) -> DanmujiResult<RoomConfig> {
+    pub async fn fetch(room_id: i64) -> DanmujiResult<RoomConfig> {
         // room init
         // get room_id and shrot_id
         // api reference: https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.room_init.md
         let mut dheaders = HeaderMap::new();
         dheaders.insert("user-agent", HeaderValue::from_str(USER_AGENT)?);
-        dheaders.insert("cookie", HeaderValue::from_str(raw_cookie)?);
 
         let cli = reqwest::ClientBuilder::new()
             .default_headers(dheaders)
@@ -155,35 +156,7 @@ impl RoomConfig {
         let res: RoomResponse = res.json().await?;
         let room = res.data;
 
-        // websocket configuration
-        let mut data = vec![];
-        data.push(("id", room.roomid.as_str()));
-        data.push(("type", "0"));
-        let res = cli
-            .get("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo")
-            .header(
-                "referer",
-                format!("https://live.bilibili.com/{}", effective_room_id),
-            )
-            .query(&data)
-            .send()
-            .await?;
-        let res: WsConfigResponse = res.json().await?;
-        let ws = res.data;
-
-        Ok(RoomConfig {
-            room_init,
-            room,
-            ws,
-        })
-    }
-
-    pub fn get_ws_url(&self) -> Option<String> {
-        self.ws.get_ws_url()
-    }
-
-    pub fn get_wss_url(&self) -> Option<String> {
-        self.ws.get_wss_url()
+        Ok(RoomConfig { room_init, room })
     }
 }
 
@@ -220,7 +193,7 @@ impl RoomInit {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Room {
     // room id
     pub roomid: String,

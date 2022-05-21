@@ -1,16 +1,14 @@
 //! Public Types of the client module, these types are the
 //! public APIs through which users interact with Bilibili's Message
 
-use derive_getters::Getters;
-use serde::{Serialize, Deserialize};
-use serde_json::{Value, Number};
 use super::{BiliWebsocketInner, NotificationBody};
-
+use derive_getters::Getters;
+use serde::{Deserialize, Serialize};
+use serde_json::{Number, Value};
 
 /// The type representing a Bilibili's message received
 /// by the client.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "body")]
 pub enum BiliMessage {
     /// Someone sent a Bullet Screen Comment
@@ -20,8 +18,7 @@ pub enum BiliMessage {
 }
 
 /// The type representing a bullet screen message
-#[derive(Debug, Clone, Getters)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Getters, Serialize, Deserialize)]
 pub struct DanmuMessage {
     // sender's uid
     uid: u64,
@@ -86,7 +83,11 @@ impl DanmuMessage {
 
         let is_gift_auto = danmu_info.get(9)?.as_u64().unwrap_or(0);
         let is_gift_auto = is_gift_auto == 2;
-        let sent_time = danmu_info.get(4).unwrap_or(&Value::Number(Number::from_f64(0.0).unwrap())).as_u64().unwrap_or(0);
+        let sent_time = danmu_info
+            .get(4)
+            .unwrap_or(&Value::Number(Number::from_f64(0.0).unwrap()))
+            .as_u64()
+            .unwrap_or(0);
 
         // 用array传是哪个天才想出来的？
         let sender_info = info[2].as_array()?;
@@ -166,8 +167,7 @@ impl DanmuMessage {
     }
 }
 
-#[derive(Debug, Clone)] 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Medal {
     level: u64,
     name: String,
@@ -175,8 +175,7 @@ pub struct Medal {
     streamer_roomid: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GuardType {
     // 不是大航海

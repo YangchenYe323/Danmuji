@@ -7,8 +7,8 @@ use std::io::{Cursor, Read};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::read::ZlibDecoder;
-use serde::{Serialize, Deserialize};
-use tracing::{warn, info, debug};
+use serde::{Deserialize, Serialize};
+use tracing::{debug, info, warn};
 
 use crate::DanmujiResult;
 
