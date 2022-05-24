@@ -4,6 +4,7 @@
 	"version": "0.0.0",
 	"scripts": {
 		"lint": "npx eslint . --fix",
+		"fmt": "npx prettier --write .",
 		"dev": "vite",
 		"build": "tsc && vite build",
 		"preview": "vite preview"

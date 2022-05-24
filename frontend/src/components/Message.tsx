@@ -32,7 +32,9 @@ export function Message({ message }: MessageProp) {
 			) : null}
 			{message.body.medal ? (
 				<div className="inline-flex text-xs text-white border rounded-md border-black min-h-fit mx-px bg-gradient-to-r from-cyan-500 to-blue-500">
-					<span className="mx-px">{Number(message.body.medal.level)}</span>
+					<span className="mx-px">
+						{Number(message.body.medal.level)}
+					</span>
 					<span className="inline-block border-l mx-px my-0 py-0 border-black"></span>
 					<span className="mx-px">{message.body.medal.name}</span>
 				</div>
