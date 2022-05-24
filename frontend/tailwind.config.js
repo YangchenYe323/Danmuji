@@ -33,7 +33,7 @@ module.exports = {
 
 			animation: {
 				"waving-hand": "wave 2s linear infinite",
-				"danmaku-movein": "movein 1s linear",
+				"danmaku-movein": "movein 0.5s linear",
 			}
 
 		},

@@ -44,7 +44,7 @@ const MessageList =  ({
 
 	return (
 		<div className="grow bg-cyan-100 h-96 ">
-			<div className="grow bg-cyan-200 h-96 overflow-hidden scroll-smooth" ref={elementRef}>
+			<div className="grow bg-white h-96 overflow-hidden scroll-smooth" ref={elementRef}>
 				{messageQueue.map((m) => 
 					<Message key={m.key} message = {m.body}/>
 				)}	
