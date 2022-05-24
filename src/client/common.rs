@@ -1,14 +1,21 @@
 //! Public Types of the client module, these types are the
 //! public APIs through which users interact with Bilibili's Message
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use super::{BiliWebsocketInner, NotificationBody};
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Serialize_repr, Deserialize_repr};
 use serde_json::{Number, Value};
+use ts_rs::TS;
 
 /// The type representing a Bilibili's message received
 /// by the client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/BiliMessage.ts")]
 #[serde(tag = "type", content = "body")]
 pub enum BiliMessage {
     /// Someone sent a Bullet Screen Comment
@@ -19,6 +26,9 @@ pub enum BiliMessage {
 
 /// The type representing a bullet screen message
 #[derive(Debug, Clone, Getters, Serialize, Deserialize)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/DanmuMessage.ts")]
 pub struct DanmuMessage {
     // sender's uid
     uid: u64,
@@ -167,7 +177,35 @@ impl DanmuMessage {
     }
 }
 
+impl DanmuMessage {
+    pub fn default_message() -> Self {
+        DanmuMessage {
+            uid: 0,
+            uname: "测试用户".to_string(),
+            content: "你好Bilibili".to_string(),
+            is_gift_auto: false,
+            sent_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+            is_manager: true,
+            is_vip: true,
+            is_svip: true,
+            is_full_member: true,
+            medal: Some(Medal {
+                level: 40,
+                name: "哈哈哈".to_string(),
+                streamer_name: "".to_string(),
+                streamer_roomid: 0,
+            }),
+            ul: 37,
+            ul_rank: "".to_string(),
+            guard: GuardType::NoGuard,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/Medal.ts")]
 pub struct Medal {
     level: u64,
     name: String,
@@ -175,17 +213,21 @@ pub struct Medal {
     streamer_roomid: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/GuardType.ts")]
 pub enum GuardType {
     // 不是大航海
-    NoGuard,
+    NoGuard = 0,
     // 舰长
-    Captain,
+    Captain = 1,
     // 提督
-    Admiral,
+    Admiral = 2,
     // 总督
-    Governor,
+    Governor = 3,
 }
 
 impl From<u64> for GuardType {

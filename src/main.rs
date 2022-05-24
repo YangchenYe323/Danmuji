@@ -15,6 +15,7 @@ use futures::{SinkExt, StreamExt};
 use response::DanmujiApiResponse;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
@@ -22,7 +23,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
-use tokio::time::Instant;
+use tokio::time::{Instant, Sleep, sleep};
 use tracing::{debug, error, info, warn, Level};
 
 use axum::{
@@ -33,12 +34,17 @@ use axum::{
     Router,
 };
 
+use crate::client::{DanmuMessage, GuardType};
+
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
 pub const USER_AGENT: &'static str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36";
 
 /// QrCode Url For Login
 #[derive(Serialize, Deserialize)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/QrCode.ts")]
 pub struct QrCode {
     url: String,
     oauthKey: String,
@@ -369,6 +375,16 @@ async fn main() {
     let room = load_room_config();
     info!("User Config: {:?}", user);
     info!("Room Config: {:?}", room);
+
+    // test producer
+    let tx_test = tx.clone();
+    tokio::spawn(async move {
+        loop {
+            tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
+
+            sleep(Duration::from_millis(5000)).await;
+        }
+    });
 
     // start connection if room config is set
     if let Some(room) = &room {

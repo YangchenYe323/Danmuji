@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
@@ -42,6 +43,9 @@ impl UserConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/user.ts")]
 pub struct User {
     pub uid: u64,
     pub uname: String,
@@ -194,6 +198,9 @@ impl RoomInit {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/room.ts")]
 pub struct Room {
     // room id
     pub roomid: String,
