@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { BiliMessage } from "./bindings/BiliMessage";
 import MessageList from "./components/MessageList";
-import {v4 as uuidv4} from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import { Room } from "./bindings/room";
 import { disconnect, getRoomStatus, roomInit } from "./apis/api";
 import RoomInfoPanel from "./components/RoomInfoPanel";
@@ -10,9 +10,9 @@ import RoomInfoPanel from "./components/RoomInfoPanel";
 // Wraps around BiliMessage with a uuid
 // to aid react re-rendering
 export type BiliUIMessage = {
-	key: string,
-	body: BiliMessage,
-}
+	key: string;
+	body: BiliMessage;
+};
 
 const connectToRoom = async (room_id: string): Promise<Room | null> => {
 	const res = await roomInit(room_id);
@@ -50,12 +50,15 @@ export const Live = () => {
 	const [socketUrl, setSocketUrl] = useState<string>("");
 	const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
 
-	const connect = useCallback(async (room_id: string): Promise<void> => {
-		const res = await connectToRoom(room_id);
-		if (res !== null) {
-			setRoom(res);
-		}
-	}, [setRoom]);
+	const connect = useCallback(
+		async (room_id: string): Promise<void> => {
+			const res = await connectToRoom(room_id);
+			if (res !== null) {
+				setRoom(res);
+			}
+		},
+		[setRoom]
+	);
 
 	const disconnect = useCallback(async (): Promise<void> => {
 		const disconnected = await disconnectFromRoom();
@@ -103,7 +106,11 @@ export const Live = () => {
 	const status = connectionStates[readyState];
 	return (
 		<div className="basis-1/2 bg-gray-200">
-			<RoomInfoPanel room={room} connectToRoom={connect} disconnectFromRoom={disconnect} />
+			<RoomInfoPanel
+				room={room}
+				connectToRoom={connect}
+				disconnectFromRoom={disconnect}
+			/>
 			<h1 className="text-center">The WebSocket is currently {status}</h1>
 			<MessageList newMessage={lastBiliMessage} />
 		</div>

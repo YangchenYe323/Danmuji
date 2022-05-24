@@ -3,14 +3,11 @@ const padTo2Digits = (num: number) => {
 };
 
 const formatDate = (date: Date) => {
-	return (
-		[
-			padTo2Digits(date.getHours()),
-			padTo2Digits(date.getMinutes()),
-			padTo2Digits(date.getSeconds()),
-		].join(":")
-	);
+	return [
+		padTo2Digits(date.getHours()),
+		padTo2Digits(date.getMinutes()),
+		padTo2Digits(date.getSeconds()),
+	].join(":");
 };
 
 export default formatDate;
-  

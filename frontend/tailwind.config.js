@@ -1,9 +1,6 @@
 /* eslint-disable no-undef */
 module.exports = {
-	content: [
-		"index.html",
-		"./src/**/*.{html,js,jsx,ts,tsx}"
-	],
+	content: ["index.html", "./src/**/*.{html,js,jsx,ts,tsx}"],
 	theme: {
 		extend: {
 			keyframes: {
@@ -26,16 +23,15 @@ module.exports = {
 
 					"100%": {
 						transform: "translateX(0)",
-						opacity: 1
-					}
-				}
+						opacity: 1,
+					},
+				},
 			},
 
 			animation: {
 				"waving-hand": "wave 2s linear infinite",
 				"danmaku-movein": "movein 0.5s linear",
-			}
-
+			},
 		},
 	},
 	plugins: [],

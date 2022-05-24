@@ -12,19 +12,23 @@ const qrcode = async (): Promise<DanmujiApiResponse<QrCode>> => {
 };
 
 /// check login result
-const queryResult = async (qr: QrCode): Promise<DanmujiApiResponse<User | null>> => {
+const queryResult = async (
+	qr: QrCode
+): Promise<DanmujiApiResponse<User | null>> => {
 	const response = await fetch(`${baseUrl}/loginCheck`, {
 		method: "POST",
-		body: JSON.stringify(qr)
+		body: JSON.stringify(qr),
 	});
 	return await response.json();
 };
 
 /// connect to room
-const roomInit = async (roomId: string): Promise<DanmujiApiResponse<Room | null>> => {
+const roomInit = async (
+	roomId: string
+): Promise<DanmujiApiResponse<Room | null>> => {
 	const response = await fetch(`${baseUrl}/roomInit/${roomId}`);
 	return await response.json();
-}; 
+};
 
 /// query currently connected room
 const getRoomStatus = async (): Promise<DanmujiApiResponse<Room | null>> => {
@@ -37,10 +41,4 @@ const disconnect = async (): Promise<DanmujiApiResponse<void>> => {
 	return await response.json();
 };
 
-export {
-	qrcode,
-	queryResult,
-	roomInit,
-	getRoomStatus,
-	disconnect,
-};
+export { qrcode, queryResult, roomInit, getRoomStatus, disconnect };
