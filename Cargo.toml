@@ -34,6 +34,10 @@ features = ["derive"]
 version = "0.14.17"
 features = ["full"]
 
+[dependencies.tower-http]
+version = "0.3.3"
+features = ["cors"]
+
 [dependencies.tokio]
 version = "1.17.0"
 features = ["full"]

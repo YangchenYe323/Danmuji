@@ -197,7 +197,7 @@ impl DanmuMessage {
             }),
             ul: 37,
             ul_rank: "".to_string(),
-            guard: GuardType::NoGuard,
+            guard: GuardType::Captain,
         }
     }
 }

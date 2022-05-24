@@ -12,6 +12,7 @@ use config::BulletScreenConfig;
 pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
 use error::DanmujiError;
 use futures::{SinkExt, StreamExt};
+use hyper::Method;
 use response::DanmujiApiResponse;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,7 @@ use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 use tokio::time::{Instant, Sleep, sleep};
 use tracing::{debug, error, info, warn, Level};
+use tower_http::cors::{Any, CorsLayer};
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
@@ -287,6 +289,22 @@ async fn getRoomStatus(
     }
 }
 
+/// Request Path: <host>/disconnect
+/// Request Method: GET
+/// 
+/// Disconnect from current room.
+/// Always succeed
+async fn disconnect(
+    Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+) -> DanmujiResult<DanmujiApiResponse<()>> {
+    let mut state = state.lock().await;
+
+    state.cli.shutdown();
+    state.room.take();
+
+    Ok(DanmujiApiResponse::success(None))
+}
+
 /// Request Path: <host>/roomInit/:room_id
 /// Request Method: GET
 ///
@@ -306,25 +324,19 @@ async fn getRoomStatus(
 async fn roomInit(
     Path(room_id): Path<i64>,
     Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
-) -> DanmujiResult<DanmujiApiResponse<String>> {
+) -> DanmujiResult<DanmujiApiResponse<Room>> {
     // a room is already connected to
     let mut state = state.lock().await;
 
     // already connected
     if state.room.is_some() {
-        return Ok(DanmujiApiResponse::failure(Some(format!(
-            "Already Connected to Room {}, please disconnect first",
-            state.room.as_ref().unwrap().room_init.room_id
-        ))));
+        return Ok(DanmujiApiResponse::failure(None));
     }
 
     // fetch room config
     let room_config = RoomConfig::fetch(room_id).await?;
     if room_config.room_init.room_id == 0 {
-        return Ok(DanmujiApiResponse::failure(Some(format!(
-            "{} is not a valid room id",
-            room_id,
-        ))));
+        return Ok(DanmujiApiResponse::failure(None));
     }
 
     // valid room, connect
@@ -332,18 +344,21 @@ async fn roomInit(
         warn!("Save room config failure: {}", err);
     }
 
+    let return_room = room_config.room.clone();
     let room_id = room_config.room_init.room_id;
     state.room = Some(room_config);
 
     let uid = state.user.as_ref().map(|u| u.user.uid);
 
     // start client
+    let tx = state.tx.clone();
     let cli = &mut state.cli;
     cli.shutdown();
+    cli.set_downstream(Some(tx));
     cli.start(room_id, uid)?;
 
     // Ok
-    Ok(DanmujiApiResponse::success(None))
+    Ok(DanmujiApiResponse::success(Some(return_room)))
 }
 
 /// The State of the application
@@ -377,14 +392,14 @@ async fn main() {
     info!("Room Config: {:?}", room);
 
     // test producer
-    let tx_test = tx.clone();
-    tokio::spawn(async move {
-        loop {
-            tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
+    // let tx_test = tx.clone();
+    // tokio::spawn(async move {
+    //     loop {
+    //         tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
 
-            sleep(Duration::from_millis(5000)).await;
-        }
-    });
+    //         sleep(Duration::from_millis(5000)).await;
+    //     }
+    // });
 
     // start connection if room config is set
     if let Some(room) = &room {
@@ -399,16 +414,25 @@ async fn main() {
         user,
         room,
     };
+    
+    //cors
+    let cors = CorsLayer::new()
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([Method::GET, Method::POST])
+        // allow requests from any origin
+        .allow_origin(Any);
 
     let app = Router::new()
         .route("/loginStatus", get(getLoginStatus))
         .route("/qrcode", get(getQrCode))
         .route("/loginCheck", post(loginCheck))
         .route("/logout", get(logout))
-        .route("/ws", get(handler))
+        .route("/ws/:room_id", get(handler))
         .route("/roomStatus", get(getRoomStatus))
         .route("/roomInit/:room_id", get(roomInit))
-        .layer(Extension(Arc::new(Mutex::new(state))));
+        .route("/disconnect/:room_id", get(disconnect))
+        .layer(Extension(Arc::new(Mutex::new(state))))
+        .layer(cors);
 
     axum::Server::bind(&"0.0.0.0:9000".parse().unwrap())
         .serve(app.into_make_service())

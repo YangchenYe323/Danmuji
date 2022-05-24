@@ -79,10 +79,10 @@ impl BiliClient {
     /// return the old consumer if we currently hold one
     ///
     /// * `downstream` new consumer
-    pub fn set_downstream(&self, downstream: Consumer) -> Option<Consumer> {
+    pub fn set_downstream(&self, downstream: Option<Consumer>) -> Option<Consumer> {
         let mut ds = self.downstream.lock().unwrap();
         let old = ds.take();
-        *ds = Some(downstream);
+        *ds = downstream;
         old
     }
 
