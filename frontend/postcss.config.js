@@ -1,5 +1,5 @@
 /* eslint-env node */
-/* eslint-disable no-var-requires */
+/* eslint-disable @typescript-eslint/no-var-requires */
 const tailwindcss = require("tailwindcss");
 
 module.exports = {

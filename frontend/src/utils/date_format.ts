@@ -1,8 +1,8 @@
-const padTo2Digits = num => {
+const padTo2Digits = (num: Number) => {
 	return num.toString().padStart(2, "0");
 };
 
-const formatDate = date => {
+const formatDate = (date: Date) => {
 	return (
 		[
 			padTo2Digits(date.getHours()),

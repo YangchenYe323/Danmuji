@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { BiliMessage } from "./bindings/BiliMessage";
 import MessageList from "./components/MessageList";
-import {v4 as uuidv4} from 'uuid';
+import {v4 as uuidv4} from "uuid";
 
 // Wraps around BiliMessage with a uuid
 // to aid react re-rendering
