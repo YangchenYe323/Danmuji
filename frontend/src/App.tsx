@@ -2,18 +2,20 @@ import { useState } from "react";
 import {qrcode, queryResult} from "./apis/login";
 import QRCode from "react-qr-code";
 import { Live } from "./Live";
+import { QrCode } from "./bindings/QrCode";
 
 export default function App() {
   
-	const [code, setQrcode] = useState({
+	const [code, setQrcode] = useState<QrCode>({
 		url: "",
 		oauthKey: "",
 	});
 
 	const get = async () => {
 		const qr = await qrcode();
-		console.log(qr);
-		setQrcode(qr);
+		if (qr.payload != null) {
+			setQrcode(qr.payload);
+		}
 	};
 
 	const query = async () => {
