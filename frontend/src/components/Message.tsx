@@ -29,8 +29,8 @@ export function Message({
 					<span className="border border-black bg-transparent rounded-md text-xs text-sky-900 font-serif mx-px">
 						{message.body.guard === "Governor" ? "总" : message.body.guard == "Admiral" ? "提" : "舰"}
 					</span>
-				:
-				null
+					:
+					null
 			}
 			{
 				message.body.medal? 
@@ -39,7 +39,7 @@ export function Message({
 						<span className="inline-block border-l mx-px my-0 py-0 border-black"></span>
 						<span className="mx-px">{message.body.medal.name}</span>
 					</div>
-				:
+					:
 					null
 			}
 			<span className="after:content-[':'] text-cyan-200 shadowed-text mx-px">{message.body.uname}</span>	

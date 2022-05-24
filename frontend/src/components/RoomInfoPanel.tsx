@@ -15,7 +15,7 @@ const RoomInfoPanel = ({
 	const [roomId, setRoomId] = useState<string | undefined>(room?.roomid);
 
 	const updateRoomId = useCallback((e: React.FormEvent<HTMLInputElement>) => {
-		let roomId = (e.target as HTMLInputElement).value;
+		const roomId = (e.target as HTMLInputElement).value;
 		console.log(roomId);
 		setRoomId(roomId);
 	}, [setRoomId]);
@@ -47,7 +47,7 @@ const RoomInfoPanel = ({
 			</h1>
 			<button className="bg-blue-500 hover:bg-blue-700 text-white px-2 font-bold rounded mt-2" onClick={disconnectFromRoom}>断开连接</button>
 		</div>
-	)
-}
+	);
+};
 
 export default RoomInfoPanel;

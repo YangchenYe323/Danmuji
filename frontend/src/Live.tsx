@@ -15,7 +15,7 @@ export type BiliUIMessage = {
 }
 
 const connectToRoom = async (room_id: string): Promise<Room | null> => {
-	let res = await roomInit(room_id);
+	const res = await roomInit(room_id);
 	if (res.success) {
 		return res.payload;
 	}
@@ -23,17 +23,17 @@ const connectToRoom = async (room_id: string): Promise<Room | null> => {
 };
 
 const queryConnectionStatus = async (): Promise<Room | null> => {
-	let res = await getRoomStatus();
+	const res = await getRoomStatus();
 	if (res.success) {
 		return res.payload;
 	}
 	return null;
-}
+};
 
 const disconnectFromRoom = async (): Promise<boolean> => {
-	let res = await disconnect();
+	const res = await disconnect();
 	return res.success;
-}
+};
 
 const baseUrl = "ws://0.0.0.0:9000/ws";
 const connectionStates = {
@@ -51,14 +51,14 @@ export const Live = () => {
 	const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
 
 	const connect = useCallback(async (room_id: string): Promise<void> => {
-		let res = await connectToRoom(room_id);
+		const res = await connectToRoom(room_id);
 		if (res !== null) {
 			setRoom(res);
 		}
 	}, [setRoom]);
 
 	const disconnect = useCallback(async (): Promise<void> => {
-		let disconnected = await disconnectFromRoom();
+		const disconnected = await disconnectFromRoom();
 		if (disconnected) {
 			setRoom(null);
 		}
@@ -67,10 +67,10 @@ export const Live = () => {
 	// query login status on amount
 	useEffect(() => {
 		const fetchRoom = async () => {
-			let res = await queryConnectionStatus();
+			const res = await queryConnectionStatus();
 			console.log(res);
 			setRoom(res);
-		}
+		};
 
 		fetchRoom();
 	}, [setRoom]);
@@ -79,7 +79,7 @@ export const Live = () => {
 	useEffect(() => {
 		if (room !== null) {
 			console.log("Socket Url Changed");
-			setSocketUrl(`${baseUrl}/${room.roomid}`)
+			setSocketUrl(`${baseUrl}/${room.roomid}`);
 		}
 	}, [room]);
 
