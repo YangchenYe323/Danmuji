@@ -214,20 +214,19 @@ pub struct Medal {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
+#[derive(Serialize, Deserialize)]
 #[derive(TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/GuardType.ts")]
 pub enum GuardType {
     // 不是大航海
-    NoGuard = 0,
+    NoGuard,
     // 舰长
-    Captain = 1,
+    Captain,
     // 提督
-    Admiral = 2,
+    Admiral,
     // 总督
-    Governor = 3,
+    Governor,
 }
 
 impl From<u64> for GuardType {
