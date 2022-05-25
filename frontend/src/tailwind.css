@@ -4,7 +4,10 @@
 
 @layer components {
 	.btn-primary {
-		@apply py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75;
+		@apply px-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75;
+	}
+	.shallow-shadowed-text {
+		text-shadow: -0.5px 0.5px #000000;
 	}
 	.shadowed-text {
 		text-shadow: -2px -2px #000000, -2px -1px #000000, -2px 0 #000000,

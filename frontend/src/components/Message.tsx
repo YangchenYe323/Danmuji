@@ -5,15 +5,16 @@ declare interface MessageProp {
 	message: BiliMessage;
 }
 
-export function Message({ message }: MessageProp) {
+const Message = ({ message }: MessageProp) => {
 	console.log(message);
 	if (message.type !== "Danmu") {
 		return <div></div>;
 	}
 
+	//todo: handle other types of message with different component
 	return (
 		<div className="flex flex-wrap justify-items-start items-center animate-danmaku-movein font-mono h-8 min-h-fit">
-			<span className="bg-lime-300 text-xs after:mr-1">
+			<span className="bg-gradient-to-r from-lime-400 to-yellow-200 text-xs text-white after:mr-1 shallow-shadowed-text">
 				{formatDate(new Date(Number(message.body.sent_time)))}
 			</span>
 			{message.body.is_manager ? (
@@ -22,12 +23,12 @@ export function Message({ message }: MessageProp) {
 				</span>
 			) : null}
 			{message.body.guard !== "NoGuard" ? (
-				<span className="border border-black bg-transparent rounded-md text-xs text-sky-900 font-serif mx-px">
+				<span className="border border-black bg-transparent rounded-md text-xs text-sky-900 font-serif px-1">
 					{message.body.guard === "Governor"
-						? "总"
+						? "总督"
 						: message.body.guard == "Admiral"
-						? "提"
-						: "舰"}
+						? "提督"
+						: "舰长"}
 				</span>
 			) : null}
 			{message.body.medal ? (
@@ -47,4 +48,6 @@ export function Message({ message }: MessageProp) {
 			</span>
 		</div>
 	);
-}
+};
+
+export default Message;

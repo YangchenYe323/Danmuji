@@ -23,7 +23,7 @@ export default function App() {
 	};
 
 	return (
-		<div className="flex flex-row flex-wrap justify-evenly items-stratch min-h-screen">
+		<div className="flex flex-row flex-wrap justify-evenly items-stratch min-h-screen font-serif">
 			<Live />
 
 			<div className="basis-1/2 bg-gray-200">

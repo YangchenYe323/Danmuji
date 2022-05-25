@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Message } from "./Message";
+import Message from "./Message";
 import { BiliUIMessage } from "../Live";
 
 declare interface MessageListProp {
@@ -41,15 +41,13 @@ const MessageList = ({ newMessage }: MessageListProp) => {
 	}, [newMessage]);
 
 	return (
-		<div className="grow bg-cyan-100 h-96 ">
-			<div
-				className="grow bg-white h-96 overflow-hidden scroll-smooth"
-				ref={elementRef}
-			>
-				{messageQueue.map((m) => (
-					<Message key={m.key} message={m.body} />
-				))}
-			</div>
+		<div
+			className="grow bg-white h-96 overflow-hidden scroll-smooth"
+			ref={elementRef}
+		>
+			{messageQueue.map((m) => (
+				<Message key={m.key} message={m.body} />
+			))}
 		</div>
 	);
 };

@@ -1,3 +1,6 @@
+/// Danmuji's API module
+/// A direct correspondence with backend's interface
+
 import { DanmujiApiResponse } from "../bindings/DanmujiApiResponse";
 import { QrCode } from "../bindings/QrCode";
 import { Room } from "../bindings/room";
