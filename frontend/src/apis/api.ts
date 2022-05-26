@@ -20,7 +20,8 @@ const danmujiFetch = async <T>(
 		});
 
 		return await response.json();
-	} catch {
+	} catch (error) {
+		console.log(error);
 		return {
 			success: false,
 			payload: null,

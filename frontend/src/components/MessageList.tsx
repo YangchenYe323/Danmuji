@@ -47,7 +47,10 @@ const MessageList = ({ newMessage, config }: MessageListProp) => {
 	// remove invisible child when messages change
 	useEffect(() => {
 		// this is the top of our container
-		// ----------------------  <- el.getBoundingClientRect().top
+		//						-------
+		//						|  |
+		//						|  |
+		// ----------------------  V <- el.getBoundingClientRect().top
 		// |					|
 		// |					|
 		// |					|
