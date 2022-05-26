@@ -8,40 +8,54 @@ import { User } from "../bindings/user";
 
 const baseUrl = "http://0.0.0.0:9000";
 
+const danmujiFetch = async <T>(
+	url: string,
+	method: "GET" | "POST" = "GET",
+	data: string | undefined = undefined
+): Promise<DanmujiApiResponse<T>> => {
+	try {
+		const response = await fetch(url, {
+			method: method || "GET",
+			body: data,
+		});
+
+		return await response.json();
+	} catch {
+		return {
+			success: false,
+			payload: null,
+		};
+	}
+};
+
 /// get login qrcode
 const qrcode = async (): Promise<DanmujiApiResponse<QrCode>> => {
-	const response = await fetch(`${baseUrl}/qrcode`);
-	return await response.json();
+	return await danmujiFetch<QrCode>(`${baseUrl}/qrcode`);
 };
 
 /// check login result
 const queryResult = async (
 	qr: QrCode
 ): Promise<DanmujiApiResponse<User | null>> => {
-	const response = await fetch(`${baseUrl}/loginCheck`, {
-		method: "POST",
-		body: JSON.stringify(qr),
-	});
-	return await response.json();
+	return await danmujiFetch(
+		`${baseUrl}/loginCheck`,
+		"POST",
+		JSON.stringify(qr)
+	);
 };
 
 /// connect to room
-const roomInit = async (
-	roomId: string
-): Promise<DanmujiApiResponse<Room | null>> => {
-	const response = await fetch(`${baseUrl}/roomInit/${roomId}`);
-	return await response.json();
+const roomInit = async (roomId: string): Promise<DanmujiApiResponse<Room>> => {
+	return await danmujiFetch<Room>(`${baseUrl}/roomInit/${roomId}`);
 };
 
 /// query currently connected room
-const getRoomStatus = async (): Promise<DanmujiApiResponse<Room | null>> => {
-	const response = await fetch(`${baseUrl}/roomStatus`);
-	return await response.json();
+const getRoomStatus = async (): Promise<DanmujiApiResponse<Room>> => {
+	return await danmujiFetch<Room>(`${baseUrl}/roomStatus`);
 };
 
 const disconnect = async (): Promise<DanmujiApiResponse<void>> => {
-	const response = await fetch(`${baseUrl}/disconnect/1234`);
-	return await response.json();
+	return await danmujiFetch(`${baseUrl}/disconnect`);
 };
 
 export { qrcode, queryResult, roomInit, getRoomStatus, disconnect };

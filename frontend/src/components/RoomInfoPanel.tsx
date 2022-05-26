@@ -42,15 +42,15 @@ const RoomInfoPanel = ({
 	// have not connected to room
 	if (room === null) {
 		return (
-			<div>
+			<div className="flex flex-wrap justify-start items-start h-fit border border-black">
 				{loading ? (
 					<div>
 						<Loading />
 						<h1>正在连接</h1>
 					</div>
 				) : (
-					<div>
-						<h1>你还没有连接到房间</h1>
+					<div className="my-2">
+						<h1 className="text-xl">你还没有连接到房间</h1>
 						<input
 							type="text"
 							onInput={updateRoomId}

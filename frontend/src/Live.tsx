@@ -6,12 +6,20 @@ import { v4 as uuidv4 } from "uuid";
 import { Room } from "./bindings/room";
 import { disconnect, getRoomStatus, roomInit } from "./apis/api";
 import RoomInfoPanel from "./components/RoomInfoPanel";
+import MessageConfigPanel from "./components/MessageConfigPanel";
 
 // Wraps around BiliMessage with a uuid
 // to aid react re-rendering
 export type BiliUIMessage = {
 	key: string;
 	body: BiliMessage;
+};
+
+// Danmuji Display Configuration
+export type DanmujiUIConfig = {
+	// accumulate gift sent in the given period and
+	// show in one batch
+	giftCombo: number | undefined;
 };
 
 const connectToRoom = async (room_id: string): Promise<Room | null> => {
@@ -35,20 +43,24 @@ const disconnectFromRoom = async (): Promise<boolean> => {
 	return res.success;
 };
 
-const baseUrl = "ws://0.0.0.0:9000/ws";
+const wsBaseUrl = "ws://0.0.0.0:9000/ws";
 const connectionStates = {
-	[ReadyState.CONNECTING]: "Connecting",
-	[ReadyState.OPEN]: "Open",
-	[ReadyState.CLOSING]: "Closing",
-	[ReadyState.CLOSED]: "Closed",
-	[ReadyState.UNINSTANTIATED]: "Uninstantiated",
+	[ReadyState.CONNECTING]: "连接中",
+	[ReadyState.OPEN]: "开启",
+	[ReadyState.CLOSING]: "关闭中",
+	[ReadyState.CLOSED]: "关闭",
+	[ReadyState.UNINSTANTIATED]: "未初始化",
 };
 
 export const Live = () => {
 	// current room config
 	const [room, setRoom] = useState<Room | null>(null);
 	// websocket state
-	const { sendMessage, lastMessage, readyState } = useWebSocket(baseUrl);
+	const { sendMessage, lastMessage, readyState } = useWebSocket(wsBaseUrl);
+	// danmujin configuration state
+	const [config, setConfig] = useState<DanmujiUIConfig>({
+		giftCombo: undefined,
+	});
 
 	const connect = useCallback(
 		async (room_id: string): Promise<void> => {
@@ -67,6 +79,10 @@ export const Live = () => {
 		}
 	}, [setRoom]);
 
+	const submitConfig = (config: DanmujiUIConfig) => {
+		setConfig(config);
+	};
+
 	// query login status on amount
 	useEffect(() => {
 		const fetchRoom = async () => {
@@ -80,11 +96,16 @@ export const Live = () => {
 
 	// handle heartbeat
 	useEffect(() => {
+		// send heartbeat to keep connection alive
+		// every 20 seconds
 		const interval = setInterval(() => {
 			sendMessage("Heartbeat");
 		}, 20000);
 		return () => clearInterval(interval);
 	}, [sendMessage]);
+
+	// console.log(`Danmuji Config: `);
+	// console.log(config);
 
 	// parse BiliMessage
 	let lastBiliMessage: BiliUIMessage | null = null;
@@ -103,8 +124,11 @@ export const Live = () => {
 				connectToRoom={connect}
 				disconnectFromRoom={disconnect}
 			/>
-			<h1 className="text-center">The WebSocket is currently {status}</h1>
-			<MessageList newMessage={lastBiliMessage} />
+			<h1 className="text-center shadowed-text text-emerald-200">
+				当前Websocket订阅状态：{status}
+			</h1>
+			<MessageList newMessage={lastBiliMessage} config={config} />
+			<MessageConfigPanel config={config} submitConfig={submitConfig} />
 		</div>
 	);
 };
