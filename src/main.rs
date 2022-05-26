@@ -302,6 +302,11 @@ async fn disconnect(
     state.cli.shutdown();
     state.room.take();
 
+    // delete config file
+    if let Err(err) = std::fs::remove_file("room.json") {
+        warn!("Fail deleting room config: {}", err);
+    }
+
     Ok(DanmujiApiResponse::success(None))
 }
 
@@ -392,14 +397,14 @@ async fn main() {
     info!("Room Config: {:?}", room);
 
     // test producer
-    // let tx_test = tx.clone();
-    // tokio::spawn(async move {
-    //     loop {
-    //         tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
+    let tx_test = tx.clone();
+    tokio::spawn(async move {
+        loop {
+            tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
 
-    //         sleep(Duration::from_millis(5000)).await;
-    //     }
-    // });
+            sleep(Duration::from_millis(5000)).await;
+        }
+    });
 
     // start connection if room config is set
     if let Some(room) = &room {
