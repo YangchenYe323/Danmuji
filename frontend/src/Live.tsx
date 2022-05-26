@@ -74,7 +74,7 @@ export const Live = () => {
 	useEffect(() => {
 		const fetchRoom = async () => {
 			const res = await queryConnectionStatus();
-			console.log(res);
+			console.log(`Connected to Room: ${res}`);
 			setRoom(res);
 		};
 

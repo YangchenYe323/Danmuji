@@ -1,3 +1,4 @@
+import React, { ForwardedRef } from "react";
 import { BiliMessage } from "../bindings/BiliMessage";
 import formatDate from "../utils/date_format";
 
@@ -5,15 +6,21 @@ declare interface MessageProp {
 	message: BiliMessage;
 }
 
-const Message = ({ message }: MessageProp) => {
-	console.log(message);
+const Message = React.forwardRef<HTMLDivElement, MessageProp>(function Message(
+	{ message }: MessageProp,
+	ref: ForwardedRef<HTMLDivElement>
+) {
+	// console.log(message);
 	if (message.type !== "Danmu") {
 		return <div></div>;
 	}
 
 	//todo: handle other types of message with different component
 	return (
-		<div className="flex flex-wrap justify-items-start items-center animate-danmaku-movein font-mono h-8 min-h-fit">
+		<div
+			className="flex flex-wrap justify-items-start items-center animate-danmaku-movein font-mono h-8 min-h-fit"
+			ref={ref}
+		>
 			<span className="bg-gradient-to-r from-lime-400 to-yellow-200 text-xs text-white after:mr-1 shallow-shadowed-text">
 				{formatDate(new Date(Number(message.body.sent_time)))}
 			</span>
@@ -48,6 +55,6 @@ const Message = ({ message }: MessageProp) => {
 			</span>
 		</div>
 	);
-};
+});
 
 export default Message;
