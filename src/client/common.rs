@@ -6,7 +6,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{BiliWebsocketInner, NotificationBody};
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
-use serde_repr::{Serialize_repr, Deserialize_repr};
 use serde_json::{Number, Value};
 use ts_rs::TS;
 
@@ -20,6 +19,7 @@ use ts_rs::TS;
 pub enum BiliMessage {
     /// Someone sent a Bullet Screen Comment
     Danmu(DanmuMessage),
+    Gift(GiftMessage),
     // Auto Room Popularity Update
     RoomPopularity(i32),
 }
@@ -240,6 +240,48 @@ impl From<u64> for GuardType {
     }
 }
 
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(Getters)]
+#[derive(TS)]
+#[ts(export)]
+#[ts(export_to = "frontend/src/bindings/GiftMessage.ts")]
+pub struct GiftMessage {
+    uid: u64,
+    uname: String,
+    guard: GuardType,
+    gift_id: u64,
+    gift_name: String,
+    gift_num: u64,
+}
+
+impl GiftMessage {
+    fn from_raw(value: &NotificationBody) -> Option<GiftMessage> {
+        assert_eq!("SEND_GIFT", value.get("cmd")?.as_str()?);
+        
+        let data = value.get("data")?;
+        // user info
+        let uid = data.get("uid")?.as_u64()?;
+        let uname = data.get("uname")?.as_str()?.to_string();
+        let guard: GuardType = data.get("guard_level")?.as_u64()?.into();
+        
+        // gift info
+        let combo_send_info = data.get("combo_send")?;
+        let gift_id = combo_send_info.get("gift_id")?.as_u64()?;
+        let gift_name = combo_send_info.get("gift_name")?.as_str()?.to_string();
+        let gift_num = combo_send_info.get("gift_num")?.as_u64()?;
+
+        Some(GiftMessage {
+            uid,
+            uname,
+            guard,
+            gift_id,
+            gift_name,
+            gift_num,
+        })
+    }
+}
+
 impl BiliMessage {
     /// convert from websocket message body
     pub(crate) fn from_raw_wesocket_message(msg: BiliWebsocketInner) -> Option<BiliMessage> {
@@ -251,12 +293,38 @@ impl BiliMessage {
             super::BiliWebsocketMessageBody::Notification(notification) => {
                 let cmd = notification.get("cmd")?;
                 let cmd = cmd.as_str()?;
+                // Current Commands:
+                // Reference: https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
+                // "DANMU_MSG": 弹幕
+                // (欢迎消息触发不稳定，可能有缓存时间)
+                // "ENTRY_EFFECT": 欢迎舰长
+                // "WELCOME": 欢迎
+                // "SUPER_CHAT_MESSAGE_JPN"
+                // "SUPER_CHAT": SC
+                // 
+                // "SEND_GIFT": 投喂礼物
+                // "COMBO_SEND": 连击投喂 (不知道怎么触发)
+                //
+                // "GUARD_BUY": 上舰长
+                // "USER_TOAST_MSG": 续费了舰长
+                // "NOTICE_MSG": 本房间续费舰长
+                // 
+                // 其他暂时不支持
                 match cmd {
                     "DANMU_MSG" => {
                         DanmuMessage::from_raw(&notification).map(|msg| BiliMessage::Danmu(msg))
                     }
 
-                    _ => None,
+                    "SEND_GIFT" => {
+                        GiftMessage::from_raw(&notification).map(|msg| BiliMessage::Gift(msg))
+                    }
+
+                    "INTERACT_WORD" => None,
+
+                    _ => {
+                        println!("{:?}", serde_json::to_string_pretty(&notification));
+                        None
+                    }
                 }
             }
             super::BiliWebsocketMessageBody::EntryReply => None,

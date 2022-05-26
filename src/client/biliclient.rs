@@ -56,7 +56,9 @@ impl BiliClient {
     /// is recommended that a valid user_id be provided
     pub fn start(&mut self, room_id: i64, user_id: Option<u64>) -> DanmujiResult<()> {
         // signal start
-        self.shutdown.store(false, Ordering::Relaxed);
+        // note: here we don't store to the original shutdown variable because that variable
+        // might be used to terminate previous worker thread in the background
+        self.shutdown = Arc::new(AtomicBool::new(false));
 
         let shutdown = Arc::clone(&self.shutdown);
         let downstream = Arc::clone(&self.downstream);
@@ -133,6 +135,9 @@ enum ClientResult {
     LostConnection,
 }
 
+/// Takes care of the websocket connection and keep it alive in the background
+/// When not shut down, this function runs in an infinite read loop. If connection is broken
+/// by accident, it catches and reconnect.
 fn start_worker(config: ClientConfig) {
     loop {
         let cfg = config.clone();
