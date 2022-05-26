@@ -47,10 +47,8 @@ const connectionStates = {
 export const Live = () => {
 	// current room config
 	const [room, setRoom] = useState<Room | null>(null);
-	// current socket url
-	const [socketUrl, setSocketUrl] = useState<string>("");
 	// websocket state
-	const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
+	const { sendMessage, lastMessage, readyState } = useWebSocket(baseUrl);
 
 	const connect = useCallback(
 		async (room_id: string): Promise<void> => {
@@ -66,7 +64,6 @@ export const Live = () => {
 		const disconnected = await disconnectFromRoom();
 		if (disconnected) {
 			setRoom(null);
-			setSocketUrl("");
 		}
 	}, [setRoom]);
 
@@ -80,15 +77,6 @@ export const Live = () => {
 
 		fetchRoom();
 	}, [setRoom]);
-
-	// update socketUrl when room is updated
-	// to trigger websocket reconnection
-	useEffect(() => {
-		if (room !== null) {
-			console.log("Socket Url Changed");
-			setSocketUrl(`${baseUrl}/${room.roomid}`);
-		}
-	}, [room]);
 
 	// handle heartbeat
 	useEffect(() => {

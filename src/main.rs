@@ -432,7 +432,7 @@ async fn main() {
         .route("/qrcode", get(getQrCode))
         .route("/loginCheck", post(loginCheck))
         .route("/logout", get(logout))
-        .route("/ws/:room_id", get(handler))
+        .route("/ws", get(handler))
         .route("/roomStatus", get(getRoomStatus))
         .route("/roomInit/:room_id", get(roomInit))
         .route("/disconnect/:room_id", get(disconnect))
