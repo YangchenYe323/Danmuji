@@ -23,9 +23,8 @@ export default function App() {
 	};
 
 	return (
-		<div className="flex flex-row flex-wrap justify-evenly items-stratch min-h-screen font-serif">
+		<div className="flex flex-row flex-wrap justify-evenly items-stratch min-h-screen font-xiaowei">
 			<Live />
-
 			<div className="basis-1/2 bg-gray-200">
 				<QRCode value={code.url} onClick={get} />
 				<button

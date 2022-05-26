@@ -19,7 +19,6 @@ const RoomInfoPanel = ({
 	const updateRoomId = useCallback(
 		(e: React.FormEvent<HTMLInputElement>) => {
 			const roomId = (e.target as HTMLInputElement).value;
-			console.log(roomId);
 			setRoomId(roomId);
 		},
 		[setRoomId]

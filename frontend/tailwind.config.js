@@ -2,6 +2,10 @@
 module.exports = {
 	content: ["index.html", "./src/**/*.{html,js,jsx,ts,tsx}"],
 	theme: {
+		fontFamily: {
+			xiaowei: ["ZCOOL XiaoWei", "serif"],
+		},
+
 		extend: {
 			keyframes: {
 				wave: {
