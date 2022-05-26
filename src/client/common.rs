@@ -253,7 +253,7 @@ pub struct GiftMessage {
     guard: GuardType,
     gift_id: u64,
     gift_name: String,
-    gift_num: u64,
+    gift_num: u32,
 }
 
 impl GiftMessage {
@@ -270,7 +270,7 @@ impl GiftMessage {
         let combo_send_info = data.get("combo_send")?;
         let gift_id = combo_send_info.get("gift_id")?.as_u64()?;
         let gift_name = combo_send_info.get("gift_name")?.as_str()?.to_string();
-        let gift_num = combo_send_info.get("gift_num")?.as_u64()?;
+        let gift_num = combo_send_info.get("gift_num")?.as_u64()? as u32;
 
         Some(GiftMessage {
             uid,
@@ -280,6 +280,43 @@ impl GiftMessage {
             gift_name,
             gift_num,
         })
+    }
+
+    fn from_raw_combo(value: &NotificationBody) -> Option<GiftMessage> {
+        assert_eq!("COMBO_SEND", value.get("cmd")?.as_str()?);
+
+        let data = value.get("data")?;
+        // user info
+        let uid = data.get("uid")?.as_u64()?;
+        let uname = data.get("uname")?.as_str()?.to_string();
+        let guard: GuardType = data.get("medal_info")?.get("guard_level")?.as_u64()?.into();
+
+        // gift info
+        let gift_id = data.get("gift_id")?.as_u64()?;
+        let gift_name = data.get("gift_name")?.as_str()?.to_string();
+        let gift_num = data.get("combo_num")?.as_u64()? as u32;
+
+        Some(GiftMessage {
+            uid,
+            uname,
+            guard,
+            gift_id,
+            gift_name,
+            gift_num,
+        })
+    }
+}
+
+impl GiftMessage {
+    pub fn default_message() -> GiftMessage {
+        GiftMessage { 
+            uid: 0, 
+            uname: "测试用户".to_string(), 
+            guard: GuardType::Captain, 
+            gift_id: 0, 
+            gift_name: "小花花".to_string(), 
+            gift_num: 1
+        }
     }
 }
 
@@ -318,6 +355,10 @@ impl BiliMessage {
 
                     "SEND_GIFT" => {
                         GiftMessage::from_raw(&notification).map(|msg| BiliMessage::Gift(msg))
+                    }
+
+                    "COMBO_SEND" => {
+                        GiftMessage::from_raw_combo(&notification).map(|msg| BiliMessage::Gift(msg))
                     }
 
                     "INTERACT_WORD" => None,

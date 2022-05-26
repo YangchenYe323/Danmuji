@@ -36,7 +36,7 @@ use axum::{
     Router,
 };
 
-use crate::client::{DanmuMessage, GuardType};
+use crate::client::{DanmuMessage, GuardType, GiftMessage};
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
@@ -397,14 +397,14 @@ async fn main() {
     info!("Room Config: {:?}", room);
 
     // test producer
-    let tx_test = tx.clone();
-    tokio::spawn(async move {
-        loop {
-            tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
-
-            sleep(Duration::from_millis(5000)).await;
-        }
-    });
+    // let tx_test = tx.clone();
+    // tokio::spawn(async move {
+    //     loop {
+    //         // tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
+    //         tx_test.send(BiliMessage::Gift(GiftMessage::default_message())).unwrap();
+    //         sleep(Duration::from_millis(500)).await;
+    //     }
+    // });
 
     // start connection if room config is set
     if let Some(room) = &room {
@@ -435,7 +435,7 @@ async fn main() {
         .route("/ws", get(handler))
         .route("/roomStatus", get(getRoomStatus))
         .route("/roomInit/:room_id", get(roomInit))
-        .route("/disconnect/:room_id", get(disconnect))
+        .route("/disconnect", get(disconnect))
         .layer(Extension(Arc::new(Mutex::new(state))))
         .layer(cors);
 
