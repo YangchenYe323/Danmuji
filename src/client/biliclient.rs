@@ -37,6 +37,9 @@ pub struct BiliClient {
 }
 
 impl BiliClient {
+    /// Create a Client instance and bind to the given consumer
+    /// 
+    /// * `downstream` downstream consumer of the messages
     pub fn new(downstream: Consumer) -> Self {
         Self {
             shutdown: Arc::new(AtomicBool::new(false)),
@@ -97,6 +100,7 @@ impl BiliClient {
             .store(true, std::sync::atomic::Ordering::Relaxed);
         // let threads be cleaned up
         let worker = self.worker.take();
+        // todo: might want make this asynchronous for better reaction latency
         if let Some(worker) = worker {
             worker.join().unwrap();
             info!("BiliClient Worker Thread Collected, Termintating...")
@@ -108,6 +112,7 @@ impl BiliClient {
 
 impl Drop for BiliClient {
     fn drop(&mut self) {
+        // make sure we clean up before dropping
         self.shutdown();
     }
 }

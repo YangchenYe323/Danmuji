@@ -19,6 +19,7 @@ use ts_rs::TS;
 pub enum BiliMessage {
     /// Someone sent a Bullet Screen Comment
     Danmu(DanmuMessage),
+    /// Someone sent gifts
     Gift(GiftMessage),
     // Auto Room Popularity Update
     RoomPopularity(i32),
