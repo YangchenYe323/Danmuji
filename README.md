@@ -6,7 +6,9 @@
 #### 前端：React + Tailwindcss
 
 ## 运行：
-目前还在初步开发阶段，只能从源码构建运行：
+目前还在初步开发阶段，只能从源码构建运行，项目使用Rust 2021 Stable Edition编译: https://rustup.rs/
+
+运行项目：
 ```bash
 # 获取代码
 git clone git@github.com:YangchenYe323/Danmuji.git
