@@ -1,6 +1,5 @@
 import React, { ForwardedRef } from "react";
 import { BiliMessage } from "../bindings/BiliMessage";
-import formatDate from "../utils/date_format";
 import Danmu from "./Danmu";
 import Gift from "./Gift";
 

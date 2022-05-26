@@ -14,6 +14,7 @@ const MessageList = ({ newMessage, config }: MessageListProp) => {
 	// gift combo map
 	// saves uname-giftname -> GiftMessage
 	// so that the same gift in a period can be accumulated and displayed once
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const [giftMap, setGiftMap] = useState<Map<string, BiliUIMessage>>(
 		new Map()
 	);

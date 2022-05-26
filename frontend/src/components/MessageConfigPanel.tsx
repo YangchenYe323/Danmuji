@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { DanmujiUIConfig } from "../Live";
 
 type ConfigPanelProp = {
@@ -41,13 +40,11 @@ const MessageConfigPanel = ({ config, submitConfig }: ConfigPanelProp) => {
 					<option value={3}>3秒</option> */}
 					{giftComboValues.map((val, i) => (
 						<option
-							key={val}
+							key={i}
 							value={val}
 							selected={config.giftCombo === val}
 						>
-							{val === 0
-								? "不延迟（礼物连击可能影响性能）"
-								: `${val}秒`}
+							{val === 0 ? "不延迟" : `${val}秒`}
 						</option>
 					))}
 				</select>
