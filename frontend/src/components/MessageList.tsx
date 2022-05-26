@@ -16,7 +16,7 @@ const MessageList = ({ newMessage }: MessageListProp) => {
 		if (element !== null) {
 			element.scrollTop = element.scrollHeight;
 		}
-	}, []);
+	}, [elementRef]);
 
 	// set up event listener
 	useEffect(() => {
