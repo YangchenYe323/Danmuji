@@ -1,2 +1,4 @@
 node_modules/
 dist/
+# auto generated type definitions
+src/bindings/
