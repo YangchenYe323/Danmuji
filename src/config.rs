@@ -1,26 +1,27 @@
-use crate::{
-    error::DanmujiError, BulletScreenPropertyResponse, DanmujiResult, RoomInitResponse,
-    RoomResponse, UserInfoResponse, WsConfigResponse, USER_AGENT,
-};
+//! Configuration Types for Danmuji
+
+use crate::{error::DanmujiError, DanmujiResult, USER_AGENT};
 use std::collections::HashMap;
 
 use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use ts_rs::TS;
 
+/// User Configuration
+/// * `raw_cookie`: raw cookie string used for authentication
+/// * `user`: Logged in user's profile information
+/// * `cookie`: structuralized cookie
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
-    // cookie used to access bilibili server
     pub raw_cookie: String,
-    // user information
     pub user: User,
     pub cookie: Cookie,
 }
 
 impl UserConfig {
     /// fetch needed information to construct a UserConfig
-    /// Object
     pub async fn fetch(raw_cookie: String) -> DanmujiResult<UserConfig> {
         // fetch user information
         let cli = reqwest::Client::new();
@@ -31,8 +32,20 @@ impl UserConfig {
             .send()
             .await?;
 
-        let user_info: UserInfoResponse = res.json().await?;
-        let user = user_info.data;
+        // UserInfo Query Response
+        // struct UserInfoResponse {
+        //     code: String,
+        //     msg: String,
+        //     message: String,
+        //     data: User,
+        // }
+        let mut user_info: Value = res.json().await?;
+        let user = user_info
+            .get_mut("data")
+            .ok_or(DanmujiError::APIFormatError)?
+            .take();
+        let user: User = serde_json::from_value(user)?;
+        // structuralize cookie
         let cookie = Cookie::from_str(&raw_cookie)?;
         Ok(UserConfig {
             raw_cookie,
@@ -42,8 +55,7 @@ impl UserConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/User.ts")]
 pub struct User {
@@ -141,10 +153,29 @@ impl RoomConfig {
             ))
             .send()
             .await?;
-        let res: RoomInitResponse = res.json().await?;
-        let room_init = res.data;
+
+        // RoomInit Api Response
+        // struct RoomInitResponse {
+        //     code: u8,
+        //     msg: String,
+        //     message: String,
+        //     data: RoomInit,
+        // }
+        let mut res: Value = res.json().await?;
+        let room_init = res
+            .get_mut("data")
+            .ok_or(DanmujiError::APIFormatError)?
+            .take();
+        let room_init: RoomInit = serde_json::from_value(room_init)?;
 
         // room data
+        // Room Api Response
+        // struct RoomResponse {
+        //     code: u8,
+        //     msg: String,
+        //     message: String,
+        //     data: Room,
+        // }
         let effective_room_id = room_init.effective_room_id();
         let res = cli
             .get(format!(
@@ -157,8 +188,12 @@ impl RoomConfig {
             )
             .send()
             .await?;
-        let res: RoomResponse = res.json().await?;
-        let room = res.data;
+        let mut res: Value = res.json().await?;
+        let room = res
+            .get_mut("data")
+            .ok_or(DanmujiError::APIFormatError)?
+            .take();
+        let room: Room = serde_json::from_value(room)?;
 
         Ok(RoomConfig { room_init, room })
     }
@@ -197,8 +232,7 @@ impl RoomInit {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/Room.ts")]
 pub struct Room {
@@ -228,6 +262,7 @@ pub struct WsConfig {
 }
 
 impl WsConfig {
+    #[allow(dead_code)]
     pub fn get_ws_url(&self) -> Option<String> {
         if self.host_list.is_empty() {
             return None;
@@ -246,6 +281,7 @@ impl WsConfig {
         Some(res)
     }
 
+    #[allow(dead_code)]
     pub fn get_wss_url(&self) -> Option<String> {
         if self.host_list.is_empty() {
             return None;
@@ -289,7 +325,28 @@ pub struct BulletScreen {
     pub room_id: i64,
 }
 
+/// Utility Response types to make parsing easier
+#[derive(Debug, Serialize, Deserialize)]
+struct WsConfigResponse {
+    code: u8,
+    message: String,
+    ttl: u8,
+    data: WsConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BulletScreenPropertyResponse {
+    code: u8,
+    data: BulletScreenData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BulletScreenData {
+    property: BulletScreenConfig,
+}
+
 impl BulletScreenConfig {
+    #[allow(dead_code)]
     pub async fn fetch(room: &RoomConfig, user: &UserConfig) -> DanmujiResult<BulletScreenConfig> {
         let cli = reqwest::Client::new();
         let res = cli

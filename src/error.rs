@@ -30,6 +30,9 @@ pub enum DanmujiError {
     /// Forward Websocket Error
     #[error("{0}")]
     WebsocketError(#[from] websocket::WebSocketError),
+    /// Missing expected field in Bilibili's API response
+    #[error("Unexpected Bilibili's API Format, Please File an Issue")]
+    APIFormatError,
 }
 
 impl DanmujiError {

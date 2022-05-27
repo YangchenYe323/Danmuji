@@ -2,13 +2,14 @@
 //! Bilibili's Websocket Message Format.
 //! For further detail please see reference:
 //! https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
+#![allow(dead_code)]
 
 use std::io::{Cursor, Read};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use flate2::read::ZlibDecoder;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info, warn};
+use tracing::warn;
 
 use crate::DanmujiResult;
 

@@ -38,7 +38,7 @@ pub struct BiliClient {
 
 impl BiliClient {
     /// Create a Client instance and bind to the given consumer
-    /// 
+    ///
     /// * `downstream` downstream consumer of the messages
     pub fn new(downstream: Consumer) -> Self {
         Self {

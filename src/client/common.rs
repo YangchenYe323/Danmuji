@@ -1,5 +1,6 @@
 //! Public Types of the client module, these types are the
 //! public APIs through which users interact with Bilibili's Message
+#![allow(dead_code)]
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -11,8 +12,7 @@ use ts_rs::TS;
 
 /// The type representing a Bilibili's message received
 /// by the client.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/BiliMessage.ts")]
 #[serde(tag = "type", content = "body")]
@@ -26,8 +26,7 @@ pub enum BiliMessage {
 }
 
 /// The type representing a bullet screen message
-#[derive(Debug, Clone, Getters, Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Debug, Clone, Getters, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/DanmuMessage.ts")]
 pub struct DanmuMessage {
@@ -185,7 +184,10 @@ impl DanmuMessage {
             uname: "测试用户".to_string(),
             content: "你好Bilibili".to_string(),
             is_gift_auto: false,
-            sent_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+            sent_time: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
             is_manager: true,
             is_vip: true,
             is_svip: true,
@@ -203,8 +205,7 @@ impl DanmuMessage {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/Medal.ts")]
 pub struct Medal {
@@ -214,9 +215,7 @@ pub struct Medal {
     streamer_roomid: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/GuardType.ts")]
 pub enum GuardType {
@@ -241,10 +240,7 @@ impl From<u64> for GuardType {
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-#[derive(Getters)]
-#[derive(TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Getters, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/GiftMessage.ts")]
 pub struct GiftMessage {
@@ -263,13 +259,13 @@ pub struct GiftMessage {
 impl GiftMessage {
     fn from_raw(value: &NotificationBody) -> Option<GiftMessage> {
         assert_eq!("SEND_GIFT", value.get("cmd")?.as_str()?);
-        
+
         let data = value.get("data")?;
         // user info
         let uid = data.get("uid")?.as_u64()?;
         let uname = data.get("uname")?.as_str()?.to_string();
         let guard: GuardType = data.get("guard_level")?.as_u64()?.into();
-        
+
         // gift info
         let combo_send_info = data.get("combo_send")?;
         let gift_id = combo_send_info.get("gift_id")?.as_u64()?;
@@ -313,13 +309,13 @@ impl GiftMessage {
 
 impl GiftMessage {
     pub fn default_message() -> GiftMessage {
-        GiftMessage { 
-            uid: 0, 
-            uname: "测试用户".to_string(), 
-            guard: GuardType::Captain, 
-            gift_id: 0, 
-            gift_name: "小花花".to_string(), 
-            gift_num: 1
+        GiftMessage {
+            uid: 0,
+            uname: "测试用户".to_string(),
+            guard: GuardType::Captain,
+            gift_id: 0,
+            gift_name: "小花花".to_string(),
+            gift_num: 1,
         }
     }
 }
@@ -343,14 +339,14 @@ impl BiliMessage {
                 // "WELCOME": 欢迎
                 // "SUPER_CHAT_MESSAGE_JPN"
                 // "SUPER_CHAT": SC
-                // 
+                //
                 // "SEND_GIFT": 投喂礼物
                 // "COMBO_SEND": 连击投喂 (不知道怎么触发)
                 //
                 // "GUARD_BUY": 上舰长
                 // "USER_TOAST_MSG": 续费了舰长
                 // "NOTICE_MSG": 本房间续费舰长
-                // 
+                //
                 // 其他暂时不支持
                 match cmd {
                     "DANMU_MSG" => {

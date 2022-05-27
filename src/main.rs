@@ -8,15 +8,14 @@ mod error;
 mod response;
 
 use client::{BiliClient, BiliMessage};
-use config::BulletScreenConfig;
-pub(crate) use config::{Room, RoomConfig, RoomInit, User, UserConfig, WsConfig};
+pub(crate) use config::{Room, RoomConfig, User, UserConfig};
 use error::DanmujiError;
 use futures::{SinkExt, StreamExt};
 use hyper::Method;
 use response::DanmujiApiResponse;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
+use serde_json::Value;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufReader, BufWriter};
@@ -24,9 +23,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
-use tokio::time::{Instant, Sleep, sleep};
-use tracing::{debug, error, info, warn, Level};
+use tokio::time::{sleep, Instant, Sleep};
 use tower_http::cors::{Any, CorsLayer};
+use tracing::{debug, error, info, warn, Level};
+use ts_rs::TS;
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
@@ -36,45 +36,19 @@ use axum::{
     Router,
 };
 
-use crate::client::{DanmuMessage, GuardType, GiftMessage};
+use crate::client::{DanmuMessage, GiftMessage, GuardType};
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
 pub const USER_AGENT: &'static str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36";
 
 /// QrCode Url For Login
-#[derive(Serialize, Deserialize)]
-#[derive(TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/QrCode.ts")]
 pub struct QrCode {
     url: String,
     oauthKey: String,
-}
-
-/// QrCode api response
-#[derive(Serialize, Deserialize)]
-pub struct QrCodeResponse {
-    code: u64,
-    status: bool,
-    ts: u64,
-    data: QrCode,
-}
-
-/// Login Check Response
-#[derive(Debug, Serialize, Deserialize)]
-struct LoginResponse {
-    code: u64,
-    status: bool,
-}
-
-/// UserInfo Query Response
-#[derive(Debug, Serialize, Deserialize)]
-struct UserInfoResponse {
-    code: String,
-    msg: String,
-    message: String,
-    data: User,
 }
 
 fn index() -> &'static str {
@@ -103,9 +77,23 @@ async fn getQrCode() -> DanmujiResult<DanmujiApiResponse<QrCode>> {
         .get("https://passport.bilibili.com/qrcode/getLoginUrl")
         .send()
         .await?;
-    let res: QrCodeResponse = res.json().await?;
 
-    Ok(DanmujiApiResponse::success(Some(res.data)))
+    // QrCode api response
+    // pub struct QrCodeResponse {
+    //     code: u64,
+    //     status: bool,
+    //     ts: u64,
+    //     data: QrCode,
+    // }
+    let mut res: Value = res.json().await?;
+    let data = res
+        .get_mut("data")
+        .ok_or(DanmujiError::APIFormatError)?
+        .take();
+
+    Ok(DanmujiApiResponse::success(Some(serde_json::from_value(
+        data,
+    )?)))
 }
 
 /// Request Path: <host>/loginCheck
@@ -159,10 +147,20 @@ async fn loginCheck(
         .send()
         .await?;
 
+    // Login Check Response
+    // struct LoginResponse {
+    // code: u64,
+    // status: bool,
+    // }
     let headers = res.headers().clone();
-    let login_res: LoginResponse = res.json().await?;
+    let login_res: Value = res.json().await?;
+    let status = login_res
+        .get("status")
+        .ok_or(DanmujiError::APIFormatError)?
+        .as_bool()
+        .ok_or(DanmujiError::APIFormatError)?;
 
-    if login_res.status {
+    if status {
         // the response might have multiple Set-Cookie headers
         // extract and process all of them
         let cookie = headers.get_all("Set-Cookie");
@@ -234,41 +232,6 @@ async fn logout(
     Ok(DanmujiApiResponse::success(Some("".to_string())))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct RoomInitResponse {
-    code: u8,
-    msg: String,
-    message: String,
-    data: RoomInit,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct RoomResponse {
-    code: u8,
-    msg: String,
-    message: String,
-    data: Room,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct WsConfigResponse {
-    code: u8,
-    message: String,
-    ttl: u8,
-    data: WsConfig,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct BulletScreenPropertyResponse {
-    code: u8,
-    data: BulletScreenData,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct BulletScreenData {
-    property: BulletScreenConfig,
-}
-
 /// Request Path: <host>/roomStatus
 /// Request Method: GET
 ///
@@ -291,7 +254,7 @@ async fn getRoomStatus(
 
 /// Request Path: <host>/disconnect
 /// Request Method: GET
-/// 
+///
 /// Disconnect from current room.
 /// Always succeed
 async fn disconnect(
@@ -419,7 +382,7 @@ async fn main() {
         user,
         room,
     };
-    
+
     //cors
     let cors = CorsLayer::new()
         // allow `GET` and `POST` when accessing the resource

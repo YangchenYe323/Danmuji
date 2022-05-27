@@ -4,8 +4,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 /// API response of Danmuji Server
-#[derive(Serialize, Debug)]
-#[derive(TS)]
+#[derive(Serialize, Debug, TS)]
 #[ts(export)]
 #[ts(export_to = "frontend/src/bindings/DanmujiApiResponse.ts")]
 pub struct DanmujiApiResponse<T: Serialize> {
