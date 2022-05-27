@@ -79,11 +79,11 @@ pub struct User {
 // todo: we can also parse expire date here
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cookie {
-    DedeUserID: String,
-    bili_jct: String,
-    DedeUserID__ckMd5: String,
-    sid: String,
-    SESSDATA: String,
+    pub DedeUserID: String,
+    pub bili_jct: String,
+    pub DedeUserID__ckMd5: String,
+    pub sid: String,
+    pub SESSDATA: String,
 }
 
 impl Cookie {
@@ -128,7 +128,7 @@ impl Cookie {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoomConfig {
     pub room_init: RoomInit,
     pub room: Room,
@@ -199,7 +199,7 @@ impl RoomConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoomInit {
     pub room_id: i64,
     pub short_id: i64,

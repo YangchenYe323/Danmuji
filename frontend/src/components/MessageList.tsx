@@ -82,6 +82,17 @@ const MessageList = ({ newMessage, config }: MessageListProp) => {
 	// handle new message
 	useEffect(() => {
 		if (newMessage !== null) {
+			// Due to parent component's re-render,
+			// sometimes parent passes us with repeated message
+			// recognize repeated message and ignore it
+			if (
+				messageQueue.length > 0 &&
+				messageQueue[messageQueue.length - 1].key === newMessage.key
+			) {
+				return;
+			}
+
+			// gift combo accumulation
 			if (newMessage.body.type == "Gift" && config && config.giftCombo) {
 				// handle gift combo
 				// keep track of the same gift sent by the same user in the period

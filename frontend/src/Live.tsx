@@ -57,6 +57,10 @@ export const Live = () => {
 	const [room, setRoom] = useState<Room | null>(null);
 	// websocket state
 	const { sendMessage, lastMessage, readyState } = useWebSocket(wsBaseUrl);
+	// last Bili UI message
+	const [lastUIMessage, setLastUIMessage] = useState<BiliUIMessage | null>(
+		null
+	);
 	// danmujin configuration state
 	const [config, setConfig] = useState<DanmujiUIConfig>({
 		giftCombo: undefined,
@@ -107,14 +111,17 @@ export const Live = () => {
 	// console.log(`Danmuji Config: `);
 	// console.log(config);
 
-	// parse BiliMessage
-	let lastBiliMessage: BiliUIMessage | null = null;
-	if (lastMessage !== null) {
-		lastBiliMessage = {
-			key: uuidv4(),
-			body: JSON.parse(lastMessage.data),
-		};
-	}
+	// parse websocket message
+	useEffect(() => {
+		let lastBiliMessage = null;
+		if (lastMessage !== null) {
+			lastBiliMessage = {
+				key: uuidv4(),
+				body: JSON.parse(lastMessage.data),
+			};
+		}
+		setLastUIMessage(lastBiliMessage);
+	}, [lastMessage]);
 
 	const status = connectionStates[readyState];
 	return (
@@ -127,7 +134,7 @@ export const Live = () => {
 			<h1 className="text-center shadowed-text text-emerald-200">
 				当前Websocket订阅状态：{status}
 			</h1>
-			<MessageList newMessage={lastBiliMessage} config={config} />
+			<MessageList newMessage={lastUIMessage} config={config} />
 			<MessageConfigPanel config={config} submitConfig={submitConfig} />
 		</div>
 	);

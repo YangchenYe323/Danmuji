@@ -6,6 +6,8 @@ mod client;
 mod config;
 mod error;
 mod response;
+mod util;
+mod sender;
 
 use client::{BiliClient, BiliMessage};
 pub(crate) use config::{Room, RoomConfig, User, UserConfig};
@@ -13,12 +15,9 @@ use error::DanmujiError;
 use futures::{SinkExt, StreamExt};
 use hyper::Method;
 use response::DanmujiApiResponse;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
-use std::fs::OpenOptions;
-use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
@@ -37,6 +36,8 @@ use axum::{
 };
 
 use crate::client::{DanmuMessage, GiftMessage, GuardType};
+use sender::DanmujiSender;
+use util::*;
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
@@ -181,11 +182,11 @@ async fn loginCheck(
             warn!("Error Saving User Config: {}", err);
         }
 
-        // update user state
-        let return_user = config.user.clone();
-        state.user = Some(config);
+        // update user state and sender state
+        state.sender.login_user(config.clone()).await?;
+        state.user = Some(config.clone());
 
-        return Ok(DanmujiApiResponse::success(Some(return_user)));
+        return Ok(DanmujiApiResponse::success(Some(config.user)));
     }
 
     // login has not gone through, return failure so that
@@ -227,6 +228,12 @@ async fn logout(
     // have not logged in
     if state.user.is_some() {
         state.user.take();
+        state.sender.unlog_user().await;
+    }
+    
+    // delete config file
+    if let Err(err) = std::fs::remove_file("user.json") {
+        warn!("Error deleting User Config: {}", err);
     }
 
     Ok(DanmujiApiResponse::success(Some("".to_string())))
@@ -263,7 +270,10 @@ async fn disconnect(
     let mut state = state.lock().await;
 
     state.cli.shutdown();
-    state.room.take();
+    if state.room.is_some() {
+        state.room.take();
+        state.sender.disconnect_room().await;
+    }
 
     // delete config file
     if let Err(err) = std::fs::remove_file("room.json") {
@@ -314,6 +324,7 @@ async fn roomInit(
 
     let return_room = room_config.room.clone();
     let room_id = room_config.room_init.room_id;
+    state.sender.connect_room(room_config.clone()).await?;
     state.room = Some(room_config);
 
     let uid = state.user.as_ref().map(|u| u.user.uid);
@@ -333,8 +344,12 @@ async fn roomInit(
 struct DanmujiState {
     // client that receives massage from Bilibili
     cli: BiliClient,
+    // client that sends Bullet Screen Comments
+    sender: DanmujiSender,
     // broadcast sender of bili client
     tx: broadcast::Sender<BiliMessage>,
+    // sender for danmu to post
+    sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
     // user configuration
     user: Option<UserConfig>,
     // room configuration
@@ -359,6 +374,16 @@ async fn main() {
     info!("User Config: {:?}", user);
     info!("Room Config: {:?}", room);
 
+    // set up sender
+    let (sender_tx, sender_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    let danmu_sender = DanmujiSender::start(sender_rx);
+    if let Some(user) = user.as_ref() {
+        danmu_sender.login_user(user.clone()).await.unwrap();
+    }
+    if let Some(room) = room.as_ref() {
+        danmu_sender.connect_room(room.clone()).await.unwrap();
+    }
+
     // test producer
     // let tx_test = tx.clone();
     // tokio::spawn(async move {
@@ -366,6 +391,15 @@ async fn main() {
     //         // tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
     //         tx_test.send(BiliMessage::Gift(GiftMessage::default_message())).unwrap();
     //         sleep(Duration::from_millis(500)).await;
+    //     }
+    // });
+
+    // test danmu producer
+    // let sender_tx_test = sender_tx.clone();
+    // tokio::spawn(async move {
+    //     loop {
+    //         sender_tx_test.send("1".to_string()).unwrap();
+    //         sleep(Duration::from_millis(10000)).await;
     //     }
     // });
 
@@ -378,7 +412,9 @@ async fn main() {
     // initialize state
     let state = DanmujiState {
         cli,
+        sender: danmu_sender,
         tx,
+        sender_tx,
         user,
         room,
     };
@@ -387,6 +423,7 @@ async fn main() {
     let cors = CorsLayer::new()
         // allow `GET` and `POST` when accessing the resource
         .allow_methods([Method::GET, Method::POST])
+        .allow_headers(Any)
         // allow requests from any origin
         .allow_origin(Any);
 
@@ -408,39 +445,6 @@ async fn main() {
         .unwrap();
 }
 
-fn save_json(object: &impl Serialize, path: impl AsRef<std::path::Path>) -> DanmujiResult<()> {
-    let file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)?;
-
-    let writer = BufWriter::new(file);
-    serde_json::to_writer(writer, object)?;
-    Ok(())
-}
-
-fn load_json<T: DeserializeOwned>(path: impl AsRef<std::path::Path>) -> Option<T> {
-    let file = OpenOptions::new().read(true).open(path).ok()?;
-    let reader = BufReader::new(file);
-    serde_json::from_reader(reader).ok()
-}
-
-fn save_user_config(config: &UserConfig) -> DanmujiResult<()> {
-    save_json(config, "user.json")
-}
-
-fn save_room_config(config: &RoomConfig) -> DanmujiResult<()> {
-    save_json(config, "room.json")
-}
-
-fn load_user_config() -> Option<UserConfig> {
-    load_json("user.json")
-}
-
-fn load_room_config() -> Option<RoomConfig> {
-    load_json("room.json")
-}
 
 // heartbeat timeout in seconds
 const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(30);

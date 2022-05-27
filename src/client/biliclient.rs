@@ -207,7 +207,7 @@ fn start_worker(config: ClientConfig) {
                                 for inner in msg.parse() {
                                     let bili_msg = BiliMessage::from_raw_wesocket_message(inner);
                                     if let Some(msg) = bili_msg {
-                                        info!("Received Msg: {:?}", msg);
+                                        // info!("Received Msg: {:?}", msg);
                                         // send message to downstream
                                         {
                                             let downstream_guard = downstream.lock().unwrap();

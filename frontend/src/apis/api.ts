@@ -16,6 +16,12 @@ const danmujiFetch = async <T>(
 	try {
 		const response = await fetch(url, {
 			method: method || "GET",
+			headers:
+				method === "POST"
+					? {
+							"Content-Type": "application/json",
+					  }
+					: undefined,
 			body: data,
 		});
 
@@ -27,6 +33,10 @@ const danmujiFetch = async <T>(
 			payload: null,
 		};
 	}
+};
+
+const getUser = async (): Promise<DanmujiApiResponse<User>> => {
+	return await danmujiFetch<User>(`${baseUrl}/loginStatus`);
 };
 
 /// get login qrcode
@@ -45,6 +55,10 @@ const queryResult = async (
 	);
 };
 
+const logoutUser = async (): Promise<DanmujiApiResponse<string>> => {
+	return await danmujiFetch(`${baseUrl}/logout`);
+};
+
 /// connect to room
 const roomInit = async (roomId: string): Promise<DanmujiApiResponse<Room>> => {
 	return await danmujiFetch<Room>(`${baseUrl}/roomInit/${roomId}`);
@@ -59,4 +73,12 @@ const disconnect = async (): Promise<DanmujiApiResponse<void>> => {
 	return await danmujiFetch(`${baseUrl}/disconnect`);
 };
 
-export { qrcode, queryResult, roomInit, getRoomStatus, disconnect };
+export {
+	getUser,
+	qrcode,
+	queryResult,
+	logoutUser,
+	roomInit,
+	getRoomStatus,
+	disconnect,
+};

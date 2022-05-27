@@ -127,7 +127,7 @@ impl DanmuMessage {
         let medal_info = info[3].as_array();
         let medal = if let Some(medal) = medal_info {
             // 勋章可能是[]
-            if medal.len() == 4 {
+            if medal.len() >= 4 {
                 let level = medal[0].as_u64().unwrap_or(0);
                 let name = medal[1].as_str().unwrap_or("").to_string();
                 let streamer_name = medal[2].as_str().unwrap_or("").to_string();
@@ -157,6 +157,7 @@ impl DanmuMessage {
         };
 
         let guard_info = info[7].as_u64().unwrap_or(0);
+        // println!("{}", guard_info);
         let guard: GuardType = guard_info.into();
 
         Some(DanmuMessage {
@@ -232,9 +233,9 @@ pub enum GuardType {
 impl From<u64> for GuardType {
     fn from(num: u64) -> GuardType {
         match num {
-            1 => GuardType::Captain,
+            1 => GuardType::Governor,
             2 => GuardType::Admiral,
-            3 => GuardType::Governor,
+            3 => GuardType::Captain,
             _ => GuardType::NoGuard,
         }
     }
@@ -364,7 +365,7 @@ impl BiliMessage {
                     "INTERACT_WORD" => None,
 
                     _ => {
-                        println!("{:?}", serde_json::to_string_pretty(&notification));
+                        // println!("{:?}", serde_json::to_string_pretty(&notification));
                         None
                     }
                 }
