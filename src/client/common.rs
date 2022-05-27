@@ -253,7 +253,11 @@ pub struct GiftMessage {
     guard: GuardType,
     gift_id: u64,
     gift_name: String,
-    gift_num: u32,
+    // currently ts_rs exports Rust's u64 to Typescript's bigint,
+    // which is not desirable because when parsing json data, the real
+    // type is still Number.
+    #[ts(type = "number")]
+    gift_num: u64,
 }
 
 impl GiftMessage {
@@ -270,7 +274,7 @@ impl GiftMessage {
         let combo_send_info = data.get("combo_send")?;
         let gift_id = combo_send_info.get("gift_id")?.as_u64()?;
         let gift_name = combo_send_info.get("gift_name")?.as_str()?.to_string();
-        let gift_num = combo_send_info.get("gift_num")?.as_u64()? as u32;
+        let gift_num = combo_send_info.get("gift_num")?.as_u64()?;
 
         Some(GiftMessage {
             uid,
@@ -294,7 +298,7 @@ impl GiftMessage {
         // gift info
         let gift_id = data.get("gift_id")?.as_u64()?;
         let gift_name = data.get("gift_name")?.as_str()?.to_string();
-        let gift_num = data.get("combo_num")?.as_u64()? as u32;
+        let gift_num = data.get("combo_num")?.as_u64()?;
 
         Some(GiftMessage {
             uid,

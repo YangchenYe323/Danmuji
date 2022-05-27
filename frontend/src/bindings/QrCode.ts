@@ -1,4 +1,2 @@
-export interface QrCode {
-	url: string;
-	oauthKey: string;
-}
+
+export interface QrCode { url: string, oauthKey: string, }

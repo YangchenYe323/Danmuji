@@ -45,7 +45,7 @@ impl UserConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[derive(TS)]
 #[ts(export)]
-#[ts(export_to = "frontend/src/bindings/user.ts")]
+#[ts(export_to = "frontend/src/bindings/User.ts")]
 pub struct User {
     pub uid: u64,
     pub uname: String,
@@ -200,7 +200,7 @@ impl RoomInit {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[derive(TS)]
 #[ts(export)]
-#[ts(export_to = "frontend/src/bindings/room.ts")]
+#[ts(export_to = "frontend/src/bindings/Room.ts")]
 pub struct Room {
     // room id
     pub roomid: String,
