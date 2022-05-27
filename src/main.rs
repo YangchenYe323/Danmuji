@@ -341,6 +341,18 @@ async fn roomInit(
 }
 
 /// The State of the application
+/// Basic Architecture:
+/// [BiliClient] (Receives Bilibili's Message and Sync with frontend)
+/// |
+/// |  tx: broadcast channel
+/// V
+/// Axum's Websocket Server (Subscribes [BiliClient] and relays the message to frontend)
+/// 
+/// Danmu Processing Plugins (Gift Thanks, Subscription Thanks, etc.)
+/// |
+/// |  sender_tx: mpsc channel
+/// V
+/// [DanmujiSender] (Consumes the danmu produced by plugins and posts them to Bilibili)
 struct DanmujiState {
     // client that receives massage from Bilibili
     cli: BiliClient,
