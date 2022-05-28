@@ -6,7 +6,7 @@ import { QrCode } from "../bindings/QrCode";
 import { Room } from "../bindings/room";
 import { User } from "../bindings/user";
 
-const baseUrl = "http://0.0.0.0:9000/api";
+const baseUrl = "/api";
 
 const danmujiFetch = async <T>(
 	url: string,

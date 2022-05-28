@@ -92,8 +92,13 @@ async fn main() {
     let room = load_room_config();
     info!("User: {:?}", user);
     info!("Room: {:?}", room);
+    // start connection if room config is set
+    if let Some(room) = &room {
+        cli.start(room.room_init.room_id, user.as_ref().map(|u| u.user.uid))
+            .unwrap();
+    }
 
-    // set up sender
+    // set up danmu sender
     let (sender_tx, sender_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
     let danmu_sender = DanmujiSender::start(sender_rx);
     if let Some(user) = user.as_ref() {
@@ -103,7 +108,7 @@ async fn main() {
         danmu_sender.connect_room(room.clone()).await.unwrap();
     }
 
-    // set up plugin executor
+    // todo: set up plugin executor
 
     // test producer
     // let tx_test = tx.clone();
@@ -124,12 +129,6 @@ async fn main() {
     //     }
     // });
 
-    // start connection if room config is set
-    if let Some(room) = &room {
-        cli.start(room.room_init.room_id, user.as_ref().map(|u| u.user.uid))
-            .unwrap();
-    }
-
     // initialize state
     let state = DanmujiState {
         cli,
@@ -140,20 +139,12 @@ async fn main() {
         room,
     };
 
-    //cors
-    let cors = CorsLayer::new()
-        // allow `GET` and `POST` when accessing the resource
-        .allow_methods([Method::GET, Method::POST])
-        .allow_headers(Any)
-        // allow requests from any origin
-        .allow_origin(Any);
-
     // single page routers
     let spa = SpaRouter::new("/assets", "frontend/dist/assets");
 
     let app = Router::new()
-        .merge(spa)
-        .route("/api/loginStatus", get(getLoginStatus))
+        .merge(spa) // assets
+        .route("/api/loginStatus", get(getLoginStatus)) // apis
         .route("/api/qrcode", get(getQrCode))
         .route("/api/loginCheck", post(loginCheck))
         .route("/api/logout", get(logout))
@@ -162,10 +153,9 @@ async fn main() {
         .route("/api/roomInit/:room_id", get(roomInit))
         .route("/api/disconnect", get(disconnect))
         .fallback(
-            get_service(ServeFile::new("frontend/dist/index.html")).handle_error(handle_error),
+            get_service(ServeFile::new("frontend/dist/index.html")).handle_error(handle_error), // serve index page as fallback
         )
-        .layer(Extension(Arc::new(Mutex::new(state))))
-        .layer(cors);
+        .layer(Extension(Arc::new(Mutex::new(state))));
 
     axum::Server::bind(&"0.0.0.0:9000".parse().unwrap())
         .serve(app.into_make_service())

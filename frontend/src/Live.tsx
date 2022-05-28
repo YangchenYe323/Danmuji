@@ -43,7 +43,6 @@ const disconnectFromRoom = async (): Promise<boolean> => {
 	return res.success;
 };
 
-const wsBaseUrl = "ws://0.0.0.0:9000/api/ws";
 const connectionStates = {
 	[ReadyState.CONNECTING]: "连接中",
 	[ReadyState.OPEN]: "开启",
@@ -56,7 +55,10 @@ export const Live = () => {
 	// current room config
 	const [room, setRoom] = useState<Room | null>(null);
 	// websocket state
-	const { sendMessage, lastMessage, readyState } = useWebSocket(wsBaseUrl);
+	const { sendMessage, lastMessage, readyState } = useWebSocket(
+		// this will be proxied by vite to the right url
+		`ws://${window.location.host}/api/ws`
+	);
 	// last Bili UI message
 	const [lastUIMessage, setLastUIMessage] = useState<BiliUIMessage | null>(
 		null

@@ -71,8 +71,10 @@ const MessageList = ({ newMessage, config }: MessageListProp) => {
 			// |					|
 			// |					|
 			// ----------------------
+			//
+			// This child is invisible now, and can be removed
 			const { top, height } = el.getBoundingClientRect();
-			// this is the first visible child
+			// this is the first visible child to retain
 			return top + height > containerTop;
 		});
 		childRefs.current.splice(0, remainingIndex);
