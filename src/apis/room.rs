@@ -5,7 +5,7 @@ use tracing::warn;
 
 use crate::{
     config::{Room, RoomConfig},
-    util::{save_room_config, delete_room_config},
+    util::{delete_room_config, save_room_config},
     DanmujiApiResponse, DanmujiResult, DanmujiState,
 };
 

@@ -2,7 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     config::{User, UserConfig},
-    util::{save_user_config, delete_user_config},
+    util::{delete_user_config, save_user_config},
     DanmujiApiResponse, DanmujiError, DanmujiResult, DanmujiState, USER_AGENT,
 };
 use axum::{Extension, Json};
@@ -101,9 +101,9 @@ pub async fn loginCheck(
     // if succeeded, we retrieve the Set-Cookie header in the response
     // and fetch user configuration
     let form = vec![
-		("oauthKey", oauthKey),
-		("gourl", "https://www.bilibili.com/".to_string())
-	];
+        ("oauthKey", oauthKey),
+        ("gourl", "https://www.bilibili.com/".to_string()),
+    ];
 
     let cli = reqwest::Client::new();
     let res = cli

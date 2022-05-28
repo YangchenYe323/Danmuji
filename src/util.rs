@@ -5,9 +5,9 @@ use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 lazy_static! {
-	static ref PROJECT_ROOT: PathBuf = project_root::get_project_root().unwrap();
-	static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user.json");
-	static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room.json");
+    static ref PROJECT_ROOT: PathBuf = project_root::get_project_root().unwrap();
+    static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user.json");
+    static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room.json");
 }
 
 fn save_json(object: &impl Serialize, path: impl AsRef<Path>) -> DanmujiResult<()> {
@@ -49,11 +49,11 @@ pub fn load_room_config() -> Option<RoomConfig> {
 }
 
 pub fn delete_user_config() -> DanmujiResult<()> {
-	std::fs::remove_file(USER_CONFIG.as_path())?;
-	Ok(())
+    std::fs::remove_file(USER_CONFIG.as_path())?;
+    Ok(())
 }
 
 pub fn delete_room_config() -> DanmujiResult<()> {
-	std::fs::remove_file(ROOM_CONFIG.as_path())?;
-	Ok(())
+    std::fs::remove_file(ROOM_CONFIG.as_path())?;
+    Ok(())
 }

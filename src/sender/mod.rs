@@ -114,10 +114,10 @@ impl DanmujiSender {
 }
 
 impl Drop for DanmujiSender {
-	fn drop(&mut self) {
-		// signal shutdown for background thread
-		self.shutdown.store(true, Ordering::Relaxed);
-	}
+    fn drop(&mut self) {
+        // signal shutdown for background thread
+        self.shutdown.store(true, Ordering::Relaxed);
+    }
 }
 
 async fn start_worker(

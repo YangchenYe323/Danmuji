@@ -350,13 +350,9 @@ impl BiliMessage {
                 //
                 // 其他暂时不支持
                 match cmd {
-                    "DANMU_MSG" => {
-                        DanmuMessage::from_raw(&notification).map(BiliMessage::Danmu)
-                    }
+                    "DANMU_MSG" => DanmuMessage::from_raw(&notification).map(BiliMessage::Danmu),
 
-                    "SEND_GIFT" => {
-                        GiftMessage::from_raw(&notification).map(BiliMessage::Gift)
-                    }
+                    "SEND_GIFT" => GiftMessage::from_raw(&notification).map(BiliMessage::Gift),
 
                     "COMBO_SEND" => {
                         GiftMessage::from_raw_combo(&notification).map(BiliMessage::Gift)
