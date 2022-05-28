@@ -2,7 +2,6 @@ import { ConfigEnv, defineConfig, UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // proxy host settings
-// todo: production server has not been set up yet
 const proxies = {
 	development: {
 		"/api/ws": {
@@ -16,17 +15,7 @@ const proxies = {
 		},
 	},
 
-	production: {
-		"/api/ws": {
-			target: "ws://localhost:9000",
-			changeOrigin: true,
-			ws: true,
-		},
-		"^/api/.*": {
-			target: "http://localhost:9000",
-			changeOrigin: false,
-		},
-	},
+	production: {},
 };
 
 // https://vitejs.dev/config/
