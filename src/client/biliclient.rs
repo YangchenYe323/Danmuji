@@ -19,7 +19,7 @@ use crate::DanmujiResult;
 use super::{common::BiliMessage, message::BiliWebsocketMessage};
 
 // Bilibili's Websocket URL
-const URL: &'static str = "ws://broadcastlv.chat.bilibili.com:2244/sub";
+const URL: &str = "ws://broadcastlv.chat.bilibili.com:2244/sub";
 
 // consumer type
 pub type Consumer = tokio::sync::broadcast::Sender<BiliMessage>;
@@ -69,8 +69,8 @@ impl BiliClient {
         let config = ClientConfig {
             room_id,
             user_id,
-            shutdown: shutdown.clone(),
-            downstream: downstream.clone(),
+            shutdown,
+            downstream,
         };
 
         let worker = std::thread::spawn(move || start_worker(config));

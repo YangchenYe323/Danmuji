@@ -43,7 +43,7 @@ const disconnectFromRoom = async (): Promise<boolean> => {
 	return res.success;
 };
 
-const wsBaseUrl = "ws://0.0.0.0:9000/ws";
+const wsBaseUrl = "ws://0.0.0.0:9000/api/ws";
 const connectionStates = {
 	[ReadyState.CONNECTING]: "连接中",
 	[ReadyState.OPEN]: "开启",

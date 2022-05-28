@@ -351,15 +351,15 @@ impl BiliMessage {
                 // 其他暂时不支持
                 match cmd {
                     "DANMU_MSG" => {
-                        DanmuMessage::from_raw(&notification).map(|msg| BiliMessage::Danmu(msg))
+                        DanmuMessage::from_raw(&notification).map(BiliMessage::Danmu)
                     }
 
                     "SEND_GIFT" => {
-                        GiftMessage::from_raw(&notification).map(|msg| BiliMessage::Gift(msg))
+                        GiftMessage::from_raw(&notification).map(BiliMessage::Gift)
                     }
 
                     "COMBO_SEND" => {
-                        GiftMessage::from_raw_combo(&notification).map(|msg| BiliMessage::Gift(msg))
+                        GiftMessage::from_raw_combo(&notification).map(BiliMessage::Gift)
                     }
 
                     "INTERACT_WORD" => None,

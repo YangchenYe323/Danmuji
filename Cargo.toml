@@ -21,10 +21,16 @@ tracing-subscriber = "0.2"
 tower = "0.4.12" 
 futures = "0.3.21"
 ts-rs = "6.1"
+project-root = "0.2.2"
+lazy_static = "1.4.0"
 
 [dependencies.axum]
 version = "0.5.6"
 features = ["ws"]
+
+[dependencies.axum-extra]
+version = "0.3.3"
+features = ["spa"]
 
 [dependencies.serde]
 version = "1.0.37"
@@ -36,7 +42,7 @@ features = ["full"]
 
 [dependencies.tower-http]
 version = "0.3.3"
-features = ["cors"]
+features = ["cors", "fs"]
 
 [dependencies.tokio]
 version = "1.17.0"

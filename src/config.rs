@@ -91,9 +91,9 @@ impl Cookie {
     pub fn from_str(raw_cookie: &str) -> DanmujiResult<Cookie> {
         let mut cookie_map = HashMap::new();
 
-        let raw_token = raw_cookie.split(";");
+        let raw_token = raw_cookie.split(';');
         for token in raw_token {
-            let kv_pair: Vec<&str> = token.split("=").collect();
+            let kv_pair: Vec<&str> = token.split('=').collect();
             if kv_pair.len() == 2 {
                 cookie_map.insert(kv_pair[0], kv_pair[1]);
             }
@@ -104,23 +104,23 @@ impl Cookie {
         let cookie = Cookie {
             DedeUserID: cookie_map
                 .get("DedeUserID")
-                .ok_or(DanmujiError::cookie("Missing DedeUserID"))?
+                .ok_or_else(|| DanmujiError::cookie("Missing DedeUserID"))?
                 .to_string(),
             bili_jct: cookie_map
                 .get("bili_jct")
-                .ok_or(DanmujiError::cookie("Missing bili_jct"))?
+                .ok_or_else(|| DanmujiError::cookie("Missing bili_jct"))?
                 .to_string(),
             DedeUserID__ckMd5: cookie_map
                 .get("DedeUserID__ckMd5")
-                .ok_or(DanmujiError::cookie("Missing DedeUserID__ckMd5"))?
+                .ok_or_else(|| DanmujiError::cookie("Missing DedeUserID__ckMd5"))?
                 .to_string(),
             sid: cookie_map
                 .get("sid")
-                .ok_or(DanmujiError::cookie("Missing sid"))?
+                .ok_or_else(|| DanmujiError::cookie("Missing sid"))?
                 .to_string(),
             SESSDATA: cookie_map
                 .get("SESSDATA")
-                .ok_or(DanmujiError::cookie("Missing SESSDATA"))?
+                .ok_or_else(|| DanmujiError::cookie("Missing SESSDATA"))?
                 .to_string(),
         };
 
@@ -275,7 +275,7 @@ impl WsConfig {
         // ws://<host>:<port>/sub
         res.push_str("ws://");
         res.push_str(&host.host);
-        res.push_str(":");
+        res.push(':');
         res.push_str(&format!("{}", host.ws_port));
         res.push_str("/sub");
         Some(res)
@@ -294,7 +294,7 @@ impl WsConfig {
         // ws://<host>:<port>/sub
         res.push_str("wss://");
         res.push_str(&host.host);
-        res.push_str(":");
+        res.push(':');
         res.push_str(&format!("{}", host.wss_port));
         res.push_str("/sub");
         Some(res)

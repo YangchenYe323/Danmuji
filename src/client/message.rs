@@ -200,7 +200,7 @@ impl BiliWebsocketHeader {
         let header_length = cursor.read_u16::<BigEndian>().unwrap();
         let protocol_version = cursor.read_u16::<BigEndian>().unwrap();
         let op: OpType = cursor.read_u32::<BigEndian>().unwrap().into();
-        let seq = cursor.read_u32::<BigEndian>().unwrap().into();
+        let seq = cursor.read_u32::<BigEndian>().unwrap();
 
         Self {
             packet_length,
