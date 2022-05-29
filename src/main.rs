@@ -9,6 +9,7 @@ mod apis;
 mod client;
 mod config;
 mod error;
+mod plugins;
 mod response;
 mod sender;
 mod util;
@@ -16,16 +17,12 @@ mod util;
 use client::{BiliClient, BiliMessage};
 pub(crate) use config::{RoomConfig, UserConfig};
 use error::DanmujiError;
-use hyper::Method;
 use hyper::StatusCode;
 use response::DanmujiApiResponse;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
-use tower_http::{
-    cors::{Any, CorsLayer},
-    services::ServeFile,
-};
+use tower_http::services::ServeFile;
 use tracing::{info, warn, Level};
 
 use axum::{
@@ -42,6 +39,9 @@ use sender::DanmujiSender;
 use apis::room::{disconnect, getRoomStatus, roomInit};
 use apis::ws::handler;
 use util::*;
+
+use crate::plugins::DanmujiPluginExecutor;
+use crate::plugins::GiftThanker;
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
@@ -65,6 +65,8 @@ pub struct DanmujiState {
     cli: BiliClient,
     // client that sends Bullet Screen Comments
     sender: DanmujiSender,
+    // plugin executor
+    executor: DanmujiPluginExecutor,
     // broadcast sender of bili client
     tx: broadcast::Sender<BiliMessage>,
     // sender for danmu to post
@@ -85,7 +87,7 @@ async fn main() {
     info!("Logger Initialized");
 
     // setup broadcast channel & client
-    let (tx, _rx) = broadcast::channel(100);
+    let (tx, rx) = broadcast::channel(100);
     let mut cli = BiliClient::new(tx.clone());
     // try to recover saved config
     let user = load_user_config();
@@ -109,6 +111,14 @@ async fn main() {
     }
 
     // todo: set up plugin executor
+    let executor = DanmujiPluginExecutor::new(rx, sender_tx.clone());
+    // test plugin
+    executor
+        .update_plugin(
+            "gift",
+            GiftThanker::new("感谢{uname}投喂的{gift_num}个{gift_name}"),
+        )
+        .await;
 
     // test producer
     // let tx_test = tx.clone();
@@ -133,6 +143,7 @@ async fn main() {
     let state = DanmujiState {
         cli,
         sender: danmu_sender,
+        executor,
         tx,
         sender_tx,
         user,
