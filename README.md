@@ -1,6 +1,6 @@
 # Danmuji
 
-一个正在开发中的，使用Rust + Typescript编写的B站直播弹幕助手。
+一个使用Rust + Typescript编写的B站直播弹幕助手。
 
 #### 后端：Axum
 #### 前端：React + Tailwindcss
@@ -47,9 +47,8 @@ npm run dev
 - [x] 扫码登录前端
  
 - 感谢姬
-  - [ ] 实时感谢礼物
+  - [x] 实时感谢礼物
   - [ ] 延时汇总感谢
 
 - Web服务
-  - [ ] Session + Cookie支持多用户登录 （目前web服务只支持一个用户连接一个房间）
   - [ ] 构建打包发布
