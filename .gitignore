@@ -7,6 +7,5 @@
 # lock file
 Cargo.lock
 
-# config
-user.json
-room.json
+# config files
+*-config.json

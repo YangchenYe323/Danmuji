@@ -1,3 +1,5 @@
+//! Modules for room connection/disconnection APIs
+
 use axum::{extract::Path, Extension};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -9,7 +11,7 @@ use crate::{
     DanmujiApiResponse, DanmujiResult, DanmujiState,
 };
 
-/// Request Path: <host>/roomStatus
+/// Request Path: <host>/api/roomStatus
 /// Request Method: GET
 ///
 /// Query which room this server is connected to
@@ -29,7 +31,7 @@ pub async fn getRoomStatus(
     }
 }
 
-/// Request Path: <host>/disconnect
+/// Request Path: <host>/api/disconnect
 /// Request Method: GET
 ///
 /// Disconnect from current room.
@@ -53,7 +55,7 @@ pub async fn disconnect(
     Ok(DanmujiApiResponse::success(None))
 }
 
-/// Request Path: <host>/roomInit/:room_id
+/// Request Path: <host>/api/roomInit/:room_id
 /// Request Method: GET
 ///
 /// try to set up a websocket connection to the live room of specified

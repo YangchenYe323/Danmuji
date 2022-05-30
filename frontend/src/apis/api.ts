@@ -2,6 +2,7 @@
 /// A direct correspondence with backend's interface
 
 import { DanmujiApiResponse } from "../bindings/DanmujiApiResponse";
+import { GiftThankConfig } from "../bindings/GiftThankConfig";
 import { QrCode } from "../bindings/QrCode";
 import { Room } from "../bindings/room";
 import { User } from "../bindings/user";
@@ -73,6 +74,22 @@ const disconnect = async (): Promise<DanmujiApiResponse<void>> => {
 	return await danmujiFetch(`${baseUrl}/disconnect`);
 };
 
+const getGiftConfig = async (): Promise<
+	DanmujiApiResponse<GiftThankConfig>
+> => {
+	return await danmujiFetch<GiftThankConfig>(`${baseUrl}/getGiftConfig`);
+};
+
+const setGiftConfig = async (
+	config: GiftThankConfig
+): Promise<DanmujiApiResponse<void>> => {
+	return await danmujiFetch<void>(
+		`${baseUrl}/setGiftConfig`,
+		"POST",
+		JSON.stringify(config)
+	);
+};
+
 export {
 	getUser,
 	qrcode,
@@ -81,4 +98,6 @@ export {
 	roomInit,
 	getRoomStatus,
 	disconnect,
+	getGiftConfig,
+	setGiftConfig,
 };

@@ -1,3 +1,5 @@
+//! Module for User login/logout APIs
+
 use std::{collections::HashSet, sync::Arc};
 
 use crate::{
@@ -21,7 +23,7 @@ pub struct QrCode {
     oauthKey: String,
 }
 
-/// Request Path: <host>/qrcode
+/// Request Path: <host>/api/qrcode
 /// Request Method: GET
 ///
 /// This interface is used for requesting a qrcode url for login
@@ -62,7 +64,7 @@ pub async fn getQrCode() -> DanmujiResult<DanmujiApiResponse<QrCode>> {
     )?)))
 }
 
-/// Request Path: <host>/loginCheck
+/// Request Path: <host>/api/loginCheck
 /// Request Method: Post
 /// Reqeust Body: [QrCode]
 ///
@@ -160,7 +162,7 @@ pub async fn loginCheck(
     Ok(DanmujiApiResponse::failure(None))
 }
 
-/// Request Path: <host>/loginStatus
+/// Request Path: <host>/api/loginStatus
 /// Request Method: GET
 ///
 /// Query the login status of the server
@@ -182,7 +184,7 @@ pub async fn getLoginStatus(
     }
 }
 
-/// Request Path: <host>/logout
+/// Request Path: <host>/api/logout
 /// Request Method: GET
 ///
 /// Logout the user and stop room connection if any

@@ -1,3 +1,5 @@
+//! Websocket Server APIs
+
 use crate::DanmujiState;
 use axum::{
     extract::{

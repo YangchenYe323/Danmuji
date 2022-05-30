@@ -1,3 +1,4 @@
+use crate::plugins::GiftThankConfig;
 use crate::{DanmujiResult, RoomConfig, UserConfig};
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::OpenOptions;
@@ -6,8 +7,9 @@ use std::path::{Path, PathBuf};
 
 lazy_static! {
     static ref PROJECT_ROOT: PathBuf = project_root::get_project_root().unwrap();
-    static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user.json");
-    static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room.json");
+    static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user-config.json");
+    static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room-config.json");
+    static ref THANK_CONFIG: PathBuf = PROJECT_ROOT.join("thank-config.json");
 }
 
 fn save_json(object: &impl Serialize, path: impl AsRef<Path>) -> DanmujiResult<()> {
@@ -38,6 +40,10 @@ pub fn save_room_config(config: &RoomConfig) -> DanmujiResult<()> {
     save_json(config, ROOM_CONFIG.as_path())
 }
 
+pub fn save_thank_config(config: &GiftThankConfig) -> DanmujiResult<()> {
+    save_json(config, THANK_CONFIG.as_path())
+}
+
 /// Load User Authentication from File
 pub fn load_user_config() -> Option<UserConfig> {
     load_json(USER_CONFIG.as_path())
@@ -48,6 +54,10 @@ pub fn load_room_config() -> Option<RoomConfig> {
     load_json(ROOM_CONFIG.as_path())
 }
 
+pub fn load_thank_config() -> GiftThankConfig {
+    load_json(THANK_CONFIG.as_path()).unwrap_or_default()
+}
+
 pub fn delete_user_config() -> DanmujiResult<()> {
     std::fs::remove_file(USER_CONFIG.as_path())?;
     Ok(())
@@ -55,5 +65,10 @@ pub fn delete_user_config() -> DanmujiResult<()> {
 
 pub fn delete_room_config() -> DanmujiResult<()> {
     std::fs::remove_file(ROOM_CONFIG.as_path())?;
+    Ok(())
+}
+
+pub fn delete_thank_config() -> DanmujiResult<()> {
+    std::fs::remove_file(THANK_CONFIG.as_path())?;
     Ok(())
 }

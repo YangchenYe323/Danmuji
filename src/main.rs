@@ -37,10 +37,10 @@ use apis::user::{getLoginStatus, getQrCode, loginCheck, logout};
 use sender::DanmujiSender;
 
 use apis::room::{disconnect, getRoomStatus, roomInit};
+use apis::settings::{queryGiftConfig, setGiftConfig};
 use apis::ws::handler;
 use util::*;
 
-use crate::plugins::DanmujiPluginExecutor;
 use crate::plugins::GiftThanker;
 
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
@@ -54,7 +54,7 @@ pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb
 /// |  tx: broadcast channel
 /// V
 /// Axum's Websocket Server (Subscribes [BiliClient] and relays the message to frontend)
-///
+/// &
 /// Danmu Processing Plugins (Gift Thanks, Subscription Thanks, etc.)
 /// |
 /// |  sender_tx: mpsc channel
@@ -65,10 +65,12 @@ pub struct DanmujiState {
     cli: BiliClient,
     // client that sends Bullet Screen Comments
     sender: DanmujiSender,
-    // plugin executor
-    executor: DanmujiPluginExecutor,
-    // broadcast sender of bili client
+    // thank gift component
+    thanker: GiftThanker,
+    #[allow(dead_code)]
+    // broadcast channel for subscription
     tx: broadcast::Sender<BiliMessage>,
+    #[allow(dead_code)]
     // sender for danmu to post
     sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
     // user configuration
@@ -110,40 +112,15 @@ async fn main() {
         danmu_sender.connect_room(room.clone()).await.unwrap();
     }
 
-    // todo: set up plugin executor
-    let executor = DanmujiPluginExecutor::new(rx, sender_tx.clone());
-    // test plugin
-    executor
-        .update_plugin(
-            "gift",
-            GiftThanker::new("感谢{uname}投喂的{gift_num}个{gift_name}"),
-        )
-        .await;
-
-    // test producer
-    // let tx_test = tx.clone();
-    // tokio::spawn(async move {
-    //     loop {
-    //         // tx_test.send(BiliMessage::Danmu(DanmuMessage::default_message())).unwrap();
-    //         tx_test.send(BiliMessage::Gift(GiftMessage::default_message())).unwrap();
-    //         sleep(Duration::from_millis(500)).await;
-    //     }
-    // });
-
-    // test danmu producer
-    // let sender_tx_test = sender_tx.clone();
-    // tokio::spawn(async move {
-    //     loop {
-    //         sender_tx_test.send("1".to_string()).unwrap();
-    //         sleep(Duration::from_millis(10000)).await;
-    //     }
-    // });
+    // plugin: gift thanker
+    let gift_thank_config = load_thank_config();
+    let thanker = GiftThanker::start(gift_thank_config, rx, sender_tx.clone());
 
     // initialize state
     let state = DanmujiState {
         cli,
         sender: danmu_sender,
-        executor,
+        thanker,
         tx,
         sender_tx,
         user,
@@ -163,6 +140,8 @@ async fn main() {
         .route("/api/roomStatus", get(getRoomStatus))
         .route("/api/roomInit/:room_id", get(roomInit))
         .route("/api/disconnect", get(disconnect))
+        .route("/api/getGiftConfig", get(queryGiftConfig))
+        .route("/api/setGiftConfig", post(setGiftConfig))
         .fallback(
             get_service(ServeFile::new("frontend/dist/index.html")).handle_error(handle_error), // serve index page as fallback
         )

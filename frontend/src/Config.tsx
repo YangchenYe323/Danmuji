@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getUser, logoutUser } from "./apis/api";
 import { User } from "./bindings/User";
 import { Link } from "react-router-dom";
+import GiftSettingsPanel from "./components/GiftSettingsPanel";
 
 const queryUser = async (): Promise<User | null> => {
 	const res = await getUser();
@@ -28,13 +29,21 @@ const Config = () => {
 	};
 
 	return (
-		<div className="flex flex-col flex-wrap items-center basis-1/2 bg-gray-200">
+		<div className="basis-1/2 bg-gray-200 border border-black">
 			{user !== null ? (
-				<div>
-					<h1>用户: {user.uname}</h1>
-					<button className="btn-primary" onClick={logout}>
-						断开登录
-					</button>
+				<div className="flex flex-col flex-wrap">
+					<div className="self-center text-center">
+						<h1 className="text-center text-2xl">
+							用户: {user.uname}
+						</h1>
+						<button
+							className="block self-center btn-primary "
+							onClick={logout}
+						>
+							断开登录
+						</button>
+					</div>
+					<GiftSettingsPanel />
 				</div>
 			) : (
 				<div>
