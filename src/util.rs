@@ -6,7 +6,7 @@ use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 lazy_static! {
-    static ref PROJECT_ROOT: PathBuf = project_root::get_project_root().unwrap();
+    static ref PROJECT_ROOT: PathBuf = std::env::current_dir().unwrap();
     static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user-config.json");
     static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room-config.json");
     static ref THANK_CONFIG: PathBuf = PROJECT_ROOT.join("thank-config.json");
