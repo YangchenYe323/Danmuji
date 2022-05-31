@@ -1,6 +1,12 @@
+//! The main binary of Danmuji,
+//! It provides websocket client service to a Bilibili live room
+//! and supports online configuration change via a web server
+
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 #![warn(rust_2018_idioms)]
+#![warn(missing_docs)]
+#![warn(missing_debug_implementations)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -43,8 +49,10 @@ use util::*;
 
 use crate::plugins::GiftThanker;
 
+/// Result Type used by Danmuji
 pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
+/// User agent used by Danmuji
 pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36";
 
 /// The State of the application
@@ -60,6 +68,7 @@ pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb
 /// |  sender_tx: mpsc channel
 /// V
 /// [DanmujiSender] (Consumes the danmu produced by plugins and posts them to Bilibili)
+#[derive(Debug)]
 pub struct DanmujiState {
     // client that receives massage from Bilibili
     cli: BiliClient,

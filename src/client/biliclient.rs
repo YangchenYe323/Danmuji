@@ -27,6 +27,7 @@ pub type Consumer = tokio::sync::broadcast::Sender<BiliMessage>;
 /// The wrapper type around rust's websocket client
 /// functionality, that adds specific support for Bilibili's
 /// websocket API
+#[derive(Debug)]
 pub struct BiliClient {
     // control flag
     shutdown: Arc<AtomicBool>,

@@ -53,6 +53,7 @@ impl GiftThankConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct GiftThanker {
     shutdown: Arc<AtomicBool>,
     config: Arc<Mutex<Option<GiftThankConfig>>>,

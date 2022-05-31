@@ -22,6 +22,7 @@ use crate::{
 
 pub type Producer = mpsc::UnboundedReceiver<String>;
 
+#[derive(Debug)]
 pub struct DanmujiSender {
     // shutdown control flag
     shutdown: Arc<AtomicBool>,

@@ -67,8 +67,3 @@ pub fn delete_room_config() -> DanmujiResult<()> {
     std::fs::remove_file(ROOM_CONFIG.as_path())?;
     Ok(())
 }
-
-pub fn delete_thank_config() -> DanmujiResult<()> {
-    std::fs::remove_file(THANK_CONFIG.as_path())?;
-    Ok(())
-}
