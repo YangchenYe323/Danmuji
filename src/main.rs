@@ -144,11 +144,11 @@ async fn main() {
         .route("/api/loginStatus", get(getLoginStatus)) // apis
         .route("/api/qrcode", get(getQrCode))
         .route("/api/loginCheck", post(loginCheck))
-        .route("/api/logout", get(logout))
+        .route("/api/logout", post(logout))
         .route("/api/ws", get(handler))
         .route("/api/roomStatus", get(getRoomStatus))
-        .route("/api/roomInit/:room_id", get(roomInit))
-        .route("/api/disconnect", get(disconnect))
+        .route("/api/roomInit/:room_id", post(roomInit))
+        .route("/api/disconnect", post(disconnect))
         .route("/api/getGiftConfig", get(queryGiftConfig))
         .route("/api/setGiftConfig", post(setGiftConfig))
         .fallback(

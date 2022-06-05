@@ -32,7 +32,7 @@ pub async fn getRoomStatus(
 }
 
 /// Request Path: <host>/api/disconnect
-/// Request Method: GET
+/// Request Method: POST 
 ///
 /// Disconnect from current room.
 /// Always succeed
@@ -56,7 +56,7 @@ pub async fn disconnect(
 }
 
 /// Request Path: <host>/api/roomInit/:room_id
-/// Request Method: GET
+/// Request Method: POST
 ///
 /// try to set up a websocket connection to the live room of specified
 /// id.

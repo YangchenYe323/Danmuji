@@ -185,7 +185,7 @@ pub async fn getLoginStatus(
 }
 
 /// Request Path: <host>/api/logout
-/// Request Method: GET
+/// Request Method: POST
 ///
 /// Logout the user and stop room connection if any
 pub async fn logout(

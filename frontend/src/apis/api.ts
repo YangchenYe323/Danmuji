@@ -57,12 +57,12 @@ const queryResult = async (
 };
 
 const logoutUser = async (): Promise<DanmujiApiResponse<string>> => {
-	return await danmujiFetch(`${baseUrl}/logout`);
+	return await danmujiFetch(`${baseUrl}/logout`, "POST");
 };
 
 /// connect to room
 const roomInit = async (roomId: string): Promise<DanmujiApiResponse<Room>> => {
-	return await danmujiFetch<Room>(`${baseUrl}/roomInit/${roomId}`);
+	return await danmujiFetch<Room>(`${baseUrl}/roomInit/${roomId}`, "POST");
 };
 
 /// query currently connected room
@@ -71,7 +71,7 @@ const getRoomStatus = async (): Promise<DanmujiApiResponse<Room>> => {
 };
 
 const disconnect = async (): Promise<DanmujiApiResponse<void>> => {
-	return await danmujiFetch(`${baseUrl}/disconnect`);
+	return await danmujiFetch(`${baseUrl}/disconnect`, "POST");
 };
 
 const getGiftConfig = async (): Promise<
