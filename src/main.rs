@@ -25,6 +25,7 @@ pub(crate) use config::{RoomConfig, UserConfig};
 use error::DanmujiError;
 use hyper::StatusCode;
 use response::DanmujiApiResponse;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
@@ -54,6 +55,11 @@ pub type DanmujiResult<T> = std::result::Result<T, DanmujiError>;
 
 /// User agent used by Danmuji
 pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36";
+
+lazy_static! {
+    static ref INDEX_FILE: PathBuf = PROJECT_ROOT.join("frontend/dist/index.html");
+    static ref ASSETS_DIR: PathBuf = PROJECT_ROOT.join("frontend/dist/assets");
+}
 
 /// The State of the application
 /// Basic Architecture:
@@ -137,7 +143,7 @@ async fn main() {
     };
 
     // single page routers
-    let spa = SpaRouter::new("/assets", "frontend/dist/assets");
+    let spa = SpaRouter::new("/assets", ASSETS_DIR.as_path());
 
     let app = Router::new()
         .merge(spa) // assets
@@ -152,7 +158,7 @@ async fn main() {
         .route("/api/getGiftConfig", get(queryGiftConfig))
         .route("/api/setGiftConfig", post(setGiftConfig))
         .fallback(
-            get_service(ServeFile::new("frontend/dist/index.html")).handle_error(handle_error), // serve index page as fallback
+            get_service(ServeFile::new(INDEX_FILE.as_path())).handle_error(handle_error), // serve index page as fallback
         )
         .layer(Extension(Arc::new(Mutex::new(state))));
 

@@ -6,10 +6,14 @@ use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 lazy_static! {
-    static ref PROJECT_ROOT: PathBuf = std::env::current_dir().unwrap();
-    static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user-config.json");
-    static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room-config.json");
-    static ref THANK_CONFIG: PathBuf = PROJECT_ROOT.join("thank-config.json");
+    /// Project's Working Directory
+    pub static ref PROJECT_ROOT: PathBuf = std::env::current_dir().unwrap();
+    /// User Config File Path
+    pub static ref USER_CONFIG: PathBuf = PROJECT_ROOT.join("user-config.json");
+    /// Room Config File Path
+    pub static ref ROOM_CONFIG: PathBuf = PROJECT_ROOT.join("room-config.json");
+    /// Gift Thank Config File Path
+    pub static ref THANK_CONFIG: PathBuf = PROJECT_ROOT.join("thank-config.json");
 }
 
 fn save_json(object: &impl Serialize, path: impl AsRef<Path>) -> DanmujiResult<()> {
