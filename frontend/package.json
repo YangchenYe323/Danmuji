@@ -3,10 +3,11 @@
 	"private": true,
 	"version": "0.0.0",
 	"scripts": {
-		"lint": "npx eslint . --fix",
+		"lint": "npx eslint .",
 		"fmt": "npx prettier --write .",
 		"dev": "vite",
 		"build": "tsc && vite build",
+		"build-dev": "tsc && vite build --mode development",
 		"preview": "vite preview"
 	},
 	"dependencies": {
