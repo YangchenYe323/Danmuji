@@ -18,12 +18,6 @@ const proxies = {
 	production: {},
 };
 
-// output directory
-const outDir = {
-	development: "../target/debug/frontend/dist",
-	production: "../target/release/frontend/dist",
-};
-
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
 	console.log(`Command: ${command}`);
@@ -32,12 +26,6 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
 		plugins: [react()],
 		server: {
 			proxy: proxies[mode],
-		},
-		build: {
-			outDir: outDir[mode],
-			// our outDir is outside of project root, so
-			// set emptyOutDir manually to refresh it on every build
-			emptyOutDir: true,
 		},
 	};
 });
