@@ -8,7 +8,6 @@
 ## 运行：
 
 #### Docker构建：
-本项目目前还没有完整的docker镜像发布流程，但是提供了一份Dockerfile供用户打包构建
 ```bash
 # 获取代码
 git clone git@github.com:YangchenYe323/Danmuji.git
@@ -23,7 +22,6 @@ docker run -p 9000:9000 <image_name>
 ```
 
 #### 从源码构建：
-本项目使用`cargo`和`npm`包管理工具，支持从源码构建
 ```bash
 # 获取代码
 git clone git@github.com:YangchenYe323/Danmuji.git
