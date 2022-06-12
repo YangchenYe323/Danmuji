@@ -27,9 +27,6 @@ pub enum DanmujiError {
     /// Forward Json Parsing Error
     #[error("{0}")]
     JsonError(#[from] serde_json::Error),
-    /// Forward Websocket Error
-    #[error("{0}")]
-    WebsocketError(#[from] websocket::WebSocketError),
     /// Missing expected field in Bilibili's API response
     #[error("Unexpected Bilibili's API Format, Please File an Issue")]
     APIFormatError,

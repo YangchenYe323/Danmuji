@@ -32,7 +32,7 @@ pub async fn getRoomStatus(
 }
 
 /// Request Path: <host>/api/disconnect
-/// Request Method: POST 
+/// Request Method: POST
 ///
 /// Disconnect from current room.
 /// Always succeed
@@ -41,9 +41,9 @@ pub async fn disconnect(
 ) -> DanmujiResult<DanmujiApiResponse<()>> {
     let mut state = state.lock().await;
 
-    state.cli.shutdown();
-    if state.room.is_some() {
-        state.room.take();
+    let room = state.room.take();
+    if let Some(room) = room {
+        state.cli.disconnect(room.room_init.room_id).await;
         state.sender.disconnect_room().await;
     }
 
@@ -103,10 +103,7 @@ pub async fn roomInit(
     let uid = state.user.as_ref().map(|u| u.user.uid);
 
     // start client
-    let tx = state.tx.clone();
     let cli = &mut state.cli;
-    cli.shutdown();
-    cli.set_downstream(Some(tx));
     cli.start(room_id, uid)?;
 
     // Ok

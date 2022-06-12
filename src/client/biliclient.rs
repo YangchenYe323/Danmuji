@@ -3,16 +3,18 @@
 //! for Bilibili live's protocol behavior and message encoding/decoding
 
 use std::{
+    collections::HashMap,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc,
     },
-    thread::JoinHandle,
     time::Duration,
 };
 
-use tracing::{debug, error, info};
-use websocket::Message;
+use futures::Stream;
+use futures::{SinkExt, StreamExt};
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, tungstenite::Error};
+use tracing::{error, info, trace, warn};
 
 use crate::DanmujiResult;
 
@@ -29,12 +31,12 @@ pub type Consumer = tokio::sync::broadcast::Sender<BiliMessage>;
 /// websocket API
 #[derive(Debug)]
 pub struct BiliClient {
-    // control flag
-    shutdown: Arc<AtomicBool>,
-    // downstream consumer of the messages we create
-    downstream: Arc<Mutex<Option<Consumer>>>,
-
-    worker: Option<JoinHandle<()>>,
+    // connected_room_id -> shutdown flag
+    shutdown: HashMap<i64, Arc<AtomicBool>>,
+    // connected_room_id -> JoinHandle that runs the connection
+    tasks: HashMap<i64, tokio::task::JoinHandle<()>>,
+    // downstream consumer of the client
+    downstream: Consumer,
 }
 
 impl BiliClient {
@@ -43,14 +45,15 @@ impl BiliClient {
     /// * `downstream` downstream consumer of the messages
     pub fn new(downstream: Consumer) -> Self {
         Self {
-            shutdown: Arc::new(AtomicBool::new(false)),
-            downstream: Arc::new(Mutex::new(Some(downstream))),
-            worker: None,
+            shutdown: HashMap::new(),
+            tasks: HashMap::new(),
+            downstream,
         }
     }
 
-    /// start a [BiliClient] instance that connects to specified room
-    /// as the given user
+    /// Start a [BiliClient] instance that connects to specified room
+    /// as the given user.
+    /// This method can safely be called many times to connect to multiple live rooms.
     ///
     /// * `room_id` id of the connected room
     /// * `user_id` id of user, 0 if not provided
@@ -59,55 +62,61 @@ impl BiliClient {
     /// When user_id is 0, websocket sometimes fails to receive meaningful messages, so it
     /// is recommended that a valid user_id be provided
     pub fn start(&mut self, room_id: i64, user_id: Option<u64>) -> DanmujiResult<()> {
-        // signal start
-        // note: here we don't store to the original shutdown variable because that variable
-        // might be used to terminate previous worker thread in the background
-        self.shutdown = Arc::new(AtomicBool::new(false));
+        if self.shutdown.contains_key(&room_id) {
+            return Ok(());
+        }
 
-        let shutdown = Arc::clone(&self.shutdown);
-        let downstream = Arc::clone(&self.downstream);
+        // the control signal for the room_id
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let task = {
+            let shutdown = shutdown.clone();
+            let downstream = self.downstream.clone();
+            let config = ClientConfig {
+                room_id,
+                user_id,
+                shutdown,
+                downstream,
+            };
 
-        let config = ClientConfig {
-            room_id,
-            user_id,
-            shutdown,
-            downstream,
+            tokio::spawn(start_worker(config))
         };
 
-        let worker = std::thread::spawn(move || start_worker(config));
-
-        self.worker = Some(worker);
-
+        self.shutdown.insert(room_id, shutdown);
+        self.tasks.insert(room_id, task);
         Ok(())
     }
 
-    /// set up downstream consumer
-    /// return the old consumer if we currently hold one
-    ///
-    /// * `downstream` new consumer
-    pub fn set_downstream(&self, downstream: Option<Consumer>) -> Option<Consumer> {
-        let mut ds = self.downstream.lock().unwrap();
-        let old = ds.take();
-        *ds = downstream;
-        old
+    /// Disconnect from the specified room
+    pub async fn disconnect(&mut self, room_id: i64) {
+        if let Some(shutdown) = self.shutdown.remove(&room_id) {
+            shutdown.store(true, Ordering::Relaxed);
+            let task = self.tasks.remove(&room_id);
+            if let Some(task) = task {
+                let (res,) = tokio::join!(task);
+                if let Err(err) = res {
+                    error!("{}", err);
+                }
+            }
+        }
     }
 
-    /// shutdown this client
+    /// Shutdown this client, disconnecting from all rooms
     /// return the downstream consumer so that it can be plugged
     /// into other producers in the future
-    pub fn shutdown(&mut self) -> Option<Consumer> {
-        // send shutdown signal to background threads
-        self.shutdown
-            .store(true, std::sync::atomic::Ordering::Relaxed);
-        // let threads be cleaned up
-        let worker = self.worker.take();
-        // todo: might want make this asynchronous for better reaction latency
-        if let Some(worker) = worker {
-            worker.join().unwrap();
-            info!("BiliClient Worker Thread Collected, Termintating...")
+    pub fn shutdown(&mut self) {
+        let ids = std::mem::take(&mut self.shutdown);
+        let tasks = std::mem::take(&mut self.tasks);
+        for shutdown in ids.into_values() {
+            shutdown.store(true, Ordering::Relaxed);
         }
-
-        self.downstream.lock().unwrap().take()
+        tokio::spawn(async move {
+            for task in tasks.into_values() {
+                let (res,) = tokio::join!(task);
+                if let Err(err) = res {
+                    error!("{}", err);
+                }
+            }
+        });
     }
 }
 
@@ -118,6 +127,7 @@ impl Drop for BiliClient {
     }
 }
 
+/// The configuration that describes a connection
 #[derive(Debug, Clone)]
 struct ClientConfig {
     room_id: i64,
@@ -125,149 +135,105 @@ struct ClientConfig {
     // shared with the top-level Client Handle & will be modified
     // by the handle to signal termination
     shutdown: Arc<AtomicBool>,
-    // shared with the top-level Client Handle & will be set
-    // by the handle to signal termination
-    downstream: Arc<Mutex<Option<Consumer>>>,
+    downstream: Consumer,
 }
 
-/// The result of a client's worker thread
-#[derive(Debug)]
-enum ClientResult {
-    // Client is terminated by the user
-    // Just clean up and return
-    Terminated,
-    // Client's connection is accidentally closed
-    // by the server, try to re-run another connection
-    LostConnection,
-}
-
-/// Takes care of the websocket connection and keep it alive in the background
+/// Takes care of keeping the websocket connection alive in the background
 /// When not shut down, this function runs in an infinite read loop. If connection is broken
-/// by accident, it catches and reconnect.
-fn start_worker(config: ClientConfig) {
+/// by accident, it reconnects automatically
+// todo: find a way to make shutdown faster, possibly with [stream-cancel](https://github.com/jonhoo/stream-cancel)
+async fn start_worker(config: ClientConfig) {
     loop {
-        let cfg = config.clone();
-        let worker_handle = std::thread::spawn(move || -> DanmujiResult<ClientResult> {
-            let ClientConfig {
-                room_id,
-                user_id,
-                shutdown,
-                downstream,
-            } = cfg;
+        let ClientConfig {
+            room_id,
+            user_id,
+            shutdown,
+            downstream,
+        } = config.clone();
+        let (cli, _) = connect_async(URL).await.unwrap();
+        let (mut write, read) = cli.split();
 
-            let cli = websocket::ClientBuilder::new(URL)
-                .unwrap()
-                .connect_insecure()?;
+        // this task handles the sending message stream to the Bilibili's live server
+        let heartbeat_task = {
+            let shutdown = shutdown.clone();
+            tokio::spawn(async move {
+                let mut heartbeat_stream =
+                    create_heartbeat_stream(room_id, user_id, shutdown).await;
+                write.send_all(&mut heartbeat_stream).await.unwrap();
+                // our sending stream has ended, send a close frame just for courtesy
+                write.send(Message::Close(None)).await.unwrap();
+            })
+        };
 
-            let (mut reader, mut writer) = cli.split()?;
-
-            // send entry data
-            let entry_msg = BiliWebsocketMessage::entry(room_id, user_id);
-            writer.send_message(&Message::binary(entry_msg.to_vec()))?;
-
-            let st = Arc::clone(&shutdown);
-            // start heartbeat thread
-            std::thread::spawn(move || {
-                // send heart beat
-                info!("Heart Beat Thread Started Running");
-                loop {
-                    if st.load(std::sync::atomic::Ordering::Relaxed) {
-                        break;
-                    }
-
-                    let heartbeat = BiliWebsocketMessage::heartbeat();
-
-                    let res = writer.send_message(&Message::binary(heartbeat.to_vec()));
-
-                    if res.is_err() {
-                        debug!("HeartBeat Thread Error {:?}", res);
-                        break;
-                    }
-
-                    std::thread::sleep(Duration::from_secs(20));
-                }
-
-                info!("Heart Beat Thread Shutdown");
-            });
-
-            // reader loop
-            let result = loop {
-                // check shutdown
-                if shutdown.load(Ordering::Relaxed) {
-                    break ClientResult::Terminated;
-                }
-                let message = reader.recv_message();
-                match message {
-                    Ok(message) => {
-                        match message {
-                            // currently Bilibili only sends binary message, so this is
-                            // the only case of interest
-                            websocket::OwnedMessage::Binary(buf) => {
-                                let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
-
-                                for inner in msg.parse() {
-                                    let bili_msg = BiliMessage::from_raw_wesocket_message(inner);
-                                    if let Some(msg) = bili_msg {
-                                        // info!("Received Msg: {:?}", msg);
-                                        // send message to downstream
-                                        {
-                                            let downstream_guard = downstream.lock().unwrap();
-                                            if let Some(guard) = downstream_guard.as_ref() {
-                                                let res = guard.send(msg);
-                                                if let Err(err) = res {
-                                                    error!("{}", err);
-                                                }
-                                            }
-                                        }
-                                    }
+        // this task handles reading message from Bilibili's live server and
+        // send the message to downstream
+        read.for_each(|msg| async {
+            let msg = msg.unwrap();
+            match msg {
+                Message::Binary(buf) => {
+                    let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
+                    for inner in msg.parse() {
+                        let bili_msg = BiliMessage::from_raw_wesocket_message(inner);
+                        if let Some(msg) = bili_msg {
+                            // info!("Received Msg: {:?}", msg);
+                            // send message to downstream
+                            {
+                                let res = downstream.send(msg);
+                                if let Err(err) = res {
+                                    error!("{}", err);
                                 }
-                            }
-
-                            // connection closed by server
-                            websocket::OwnedMessage::Close(_) => {
-                                break ClientResult::LostConnection;
-                            }
-
-                            // should not reach here
-                            _ => {
-                                info!("{:?}", message);
                             }
                         }
                     }
-                    // websocket error
-                    Err(err) => {
-                        error!("{}", err);
-                        break ClientResult::LostConnection;
-                    }
                 }
-            };
-
-            // connection terminated somehow
-            Ok(result)
-        });
-
-        // during normal execution, worker_handle runs
-        // indefinitely until either: (a). shutdown flag is set externally
-        // or (b). Connection closed by Server
-        // Both cases are handled below
-        let result = worker_handle.join().unwrap();
-
-        match result {
-            Ok(ClientResult::Terminated) => break,
-
-            Ok(ClientResult::LostConnection) => {
-                info!("Websocket connection lost by accident, Reconnecting...");
-                continue;
+                msg => {
+                    // we don't expect Bilibili to send other types of message
+                    // trace for debugging use
+                    trace!("Room {} Received Message: {}", room_id, msg);
+                }
             }
+        })
+        .await;
 
-            Err(err) => {
-                error!("Websocket Error: {}, try Reconnecting...", err);
-                continue;
-            }
+        // In normal execution the read task runs forever. If it is terminated either server stopped the connection
+        // or we have terminated. Either case abort the write task accordingly.
+        heartbeat_task.abort();
+
+        // terminated, exit
+        if shutdown.load(Ordering::Relaxed) {
+            break;
         }
+
+        warn!("Connection Lost, Reconnecting...");
     }
 
-    // terminated
+    // sanity check
     assert!(config.shutdown.load(Ordering::Relaxed));
-    info!("Websocket terminated");
+    info!("Websocket Connection to Room {} Terminated", config.room_id);
+}
+
+// Creates a message stream to Bilibili's server with the following structure:
+// [Entry Security Message]
+// | every 20s
+// V
+// Heartbeat
+// ...
+async fn create_heartbeat_stream(
+    room_id: i64,
+    uid: Option<u64>,
+    shutdown: Arc<AtomicBool>,
+) -> impl Stream<Item = std::result::Result<Message, Error>> {
+    let (mut tx, rx) = futures_channel::mpsc::unbounded();
+    tokio::spawn(async move {
+        let entry = BiliWebsocketMessage::entry(room_id, uid);
+        tx.send(entry).await.unwrap();
+        loop {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_secs(20)).await;
+            tx.send(BiliWebsocketMessage::heartbeat()).await.unwrap();
+        }
+    });
+    rx.map(|msg| Ok(Message::Binary(msg.to_vec())))
 }
