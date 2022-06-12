@@ -6,9 +6,24 @@
 #### 前端：React + Tailwindcss
 
 ## 运行：
-目前还在初步开发阶段，只能从源码构建运行，项目使用Rust 2021 Stable Edition编译: https://rustup.rs/
 
-运行项目：
+#### Docker构建：
+本项目目前还没有完整的docker镜像发布流程，但是提供了一份Dockerfile供用户打包构建
+```bash
+# 获取代码
+git clone git@github.com:YangchenYe323/Danmuji.git
+# 进入项目目录
+cd Danmuji
+# 运行docker构建
+docker build . -t <image_name>
+# 项目监听在localhost:9000端口
+docker run -p 9000:9000 <image_name>
+
+# 访问localhost:9000
+```
+
+#### 从源码构建：
+本项目使用`cargo`和`npm`包管理工具，支持从源码构建
 ```bash
 # 获取代码
 git clone git@github.com:YangchenYe323/Danmuji.git
@@ -23,7 +38,7 @@ cd Danmuji/frontend
 npm install
 npm run dev
 
-# 访问localhost:3000即可
+# 访问localhost:3000
 ```
 
 
