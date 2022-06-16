@@ -6,7 +6,7 @@ RUN npm install
 RUN npm run build
 
 # build rust code
-FROM rust:1.59 as server-builder
+FROM rust:1.61 as server-builder
 # create an empty rust project(with no source code)
 # and compile dependencies in a separate layer
 # this can reduce compilation time when we make changes to
