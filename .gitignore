@@ -1,6 +1,9 @@
 # vscode config
 .vscode/
 
+# intellij config
+.idea/
+
 # compilation target
 /target
 
