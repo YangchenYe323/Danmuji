@@ -167,7 +167,7 @@ const SEQ: u32 = 1;
 // 0         4         i32     Big       packet-length
 // 4         2         i16     Big       header-length  Fixed 16
 // 6         2         i16     Big       proto-version
-// 8         4         i32     Big       Opertion Type
+// 8         4         i32     Big       Operation Type
 // 12        4         i32     Big       Seq ID         Fixed 1
 #[derive(Debug, PartialEq, Eq)]
 pub struct BiliWebsocketHeader {
