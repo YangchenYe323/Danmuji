@@ -2,8 +2,6 @@
 //! Bilibili's Websocket Message Format.
 //! For further detail please see reference:
 //! https://github.com/lovelyyoshino/Bilibili-Live-API/blob/master/API.WebSocket.md
-#![allow(dead_code)]
-
 use std::io::{Cursor, Read};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -92,7 +90,7 @@ impl BiliWebsocketMessage {
                     // data is not compressed
                     _ => {
                         vec![BiliWebsocketInner {
-                            header,
+                            _header: header,
                             body: BiliWebsocketMessageBody::Notification(
                                 serde_json::from_slice(&data[..]).unwrap(),
                             ),
@@ -102,7 +100,7 @@ impl BiliWebsocketMessage {
             }
             OpType::EntryReply => {
                 vec![BiliWebsocketInner {
-                    header,
+                    _header: header,
                     body: BiliWebsocketMessageBody::EntryReply,
                 }]
             }
@@ -111,7 +109,7 @@ impl BiliWebsocketMessage {
                 let mut cursor = Cursor::new(data);
                 let popularity = cursor.read_i32::<BigEndian>().unwrap_or(0);
                 vec![BiliWebsocketInner {
-                    header,
+                    _header: header,
                     body: BiliWebsocketMessageBody::RoomPopularity(popularity),
                 }]
             }
@@ -304,20 +302,18 @@ impl FirstSecurityData {
 /// is that [BiliWebsocketMessage] is the top level construct of communication protocol,
 /// and the server might compress a vector of [BiliWebsocketInner] in a single frame it sends,
 /// i.e., one [BiliWebsocketMessage] can parse to multiple [BiliWebsocketInner]s,
-/// or it can contain only one [BiliWebsocketInner], which is tricky.
+/// or it can contain only one [BiliWebsocketInner].
 ///
 #[derive(Debug)]
 pub struct BiliWebsocketInner {
-    // inner has its own header
-    header: BiliWebsocketHeader,
+    // inner has its own header, but our
+    // user should not care about it, but rather
+    // rely on our type systems
+    _header: BiliWebsocketHeader,
     body: BiliWebsocketMessageBody,
 }
 
 impl BiliWebsocketInner {
-    pub fn get_op_type(&self) -> OpType {
-        self.header.op
-    }
-
     /// Consume the message and return the body
     pub fn into_body(self) -> BiliWebsocketMessageBody {
         self.body
@@ -350,6 +346,7 @@ pub enum BiliWebsocketMessageBody {
 pub type NotificationBody = serde_json::Value;
 
 impl BiliWebsocketInner {
+    /// parse a [BiliWebsocketInner] from raw binary data
     fn from_binary(buf: &[u8]) -> DanmujiResult<Self> {
         // sanity check
         assert!(HEADER_LENGTH as usize <= buf.len());
@@ -388,7 +385,10 @@ impl BiliWebsocketInner {
             _ => unimplemented!(),
         };
 
-        Ok(Self { header, body })
+        Ok(Self {
+            _header: header,
+            body,
+        })
     }
 }
 
