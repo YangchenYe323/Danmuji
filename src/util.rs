@@ -34,12 +34,10 @@ fn load_json<T: DeserializeOwned>(path: impl AsRef<Path>) -> Option<T> {
     serde_json::from_reader(reader).ok()
 }
 
-/// Persist User Authentication Config
 pub fn save_user_config(config: &UserConfig) -> DanmujiResult<()> {
     save_json(config, USER_CONFIG.as_path())
 }
 
-/// Persist Last connected room
 pub fn save_room_config(config: &RoomConfig) -> DanmujiResult<()> {
     save_json(config, ROOM_CONFIG.as_path())
 }
@@ -48,12 +46,10 @@ pub fn save_thank_config(config: &GiftThankConfig) -> DanmujiResult<()> {
     save_json(config, THANK_CONFIG.as_path())
 }
 
-/// Load User Authentication from File
 pub fn load_user_config() -> Option<UserConfig> {
     load_json(USER_CONFIG.as_path())
 }
 
-/// Load Room Configuration from File
 pub fn load_room_config() -> Option<RoomConfig> {
     load_json(ROOM_CONFIG.as_path())
 }

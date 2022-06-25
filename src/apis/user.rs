@@ -135,7 +135,9 @@ pub async fn loginCheck(
         let cookie = headers.get_all("Set-Cookie");
         let mut cookie_set = HashSet::new();
         for c in cookie {
-            let cookie_terms = c.to_str()?.split(';').map(str::to_string);
+            // here we know that Bilibili's cookie header doesn't contain
+            // opaque bytes, hence the unwrap is justified
+            let cookie_terms = c.to_str().unwrap().split(';').map(str::to_string);
             for term in cookie_terms {
                 cookie_set.insert(term);
             }

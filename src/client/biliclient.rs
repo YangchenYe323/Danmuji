@@ -1,6 +1,9 @@
-//! This module implements the BiliClient type,
-//! which wraps around rust-websocket with specific support
-//! for Bilibili live's protocol behavior and message encoding/decoding
+//! This module implements the [BiliClient] type,
+//! [BiliClient] is the component in Danmuji that handles all the websocket
+//! interaction with the Bilibili Servers. It's responsible for:
+//! - Establishing websocket connections with BiliBili and keep it alive
+//! - Converting raw websocket messages to our custom type
+//! - Forwarding the converted structure to the downstream consumers
 
 use std::{
     collections::HashMap,
@@ -26,9 +29,12 @@ const URL: &str = "ws://broadcastlv.chat.bilibili.com:2244/sub";
 // consumer type
 pub type Consumer = tokio::sync::broadcast::Sender<BiliMessage>;
 
-/// The wrapper type around rust's websocket client
-/// functionality, that adds specific support for Bilibili's
-/// websocket API
+/// The [BiliClient] struct that represents a handle and manager to a
+/// pool of background tasks that connect to & interact with BiliBili's
+/// live room websocket servers.
+///
+/// It is constructed with a [Consumer] as downstream, which is currently a
+/// broadcast Sender, where it will forward everything.
 #[derive(Debug)]
 pub struct BiliClient {
     // connected_room_id -> shutdown flag
@@ -78,7 +84,7 @@ impl BiliClient {
                 downstream,
             };
 
-            tokio::spawn(start_worker(config))
+            tokio::spawn(start_worker(config, URL))
         };
 
         self.shutdown.insert(room_id, shutdown);
@@ -101,8 +107,6 @@ impl BiliClient {
     }
 
     /// Shutdown this client, disconnecting from all rooms
-    /// return the downstream consumer so that it can be plugged
-    /// into other producers in the future
     pub fn shutdown(&mut self) {
         let ids = std::mem::take(&mut self.shutdown);
         let tasks = std::mem::take(&mut self.tasks);
@@ -127,7 +131,8 @@ impl Drop for BiliClient {
     }
 }
 
-/// The configuration that describes a connection
+/// Configuration that describes a websocket connection,
+/// it is used to start a background connecting task
 #[derive(Debug, Clone)]
 struct ClientConfig {
     room_id: i64,
@@ -141,8 +146,12 @@ struct ClientConfig {
 /// Takes care of keeping the websocket connection alive in the background
 /// When not shut down, this function runs in an infinite read loop. If connection is broken
 /// by accident, it reconnects automatically
+///
+/// *`config`: Configuration of the connection
+/// * `url`: Socket Server's url
+///
 // todo: find a way to make shutdown faster, possibly with [stream-cancel](https://github.com/jonhoo/stream-cancel)
-async fn start_worker(config: ClientConfig) {
+async fn start_worker(config: ClientConfig, url: &'static str) {
     loop {
         let ClientConfig {
             room_id,
@@ -150,7 +159,7 @@ async fn start_worker(config: ClientConfig) {
             shutdown,
             downstream,
         } = config.clone();
-        let (cli, _) = connect_async(URL).await.unwrap();
+        let (cli, _) = connect_async(url).await.unwrap();
         let (mut write, read) = cli.split();
 
         // this task handles the sending message stream to the Bilibili's live server
@@ -212,12 +221,12 @@ async fn start_worker(config: ClientConfig) {
     info!("Websocket Connection to Room {} Terminated", config.room_id);
 }
 
-// Creates a message stream to Bilibili's server with the following structure:
-// [Entry Security Message]
-// | every 20s
-// V
-// Heartbeat
-// ...
+/// Creates a message stream to Bilibili's server with the following structure:
+/// [Entry Security Message]
+/// | every 20s
+/// V
+/// Heartbeat
+/// ...
 async fn create_heartbeat_stream(
     room_id: i64,
     uid: Option<u64>,

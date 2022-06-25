@@ -4,29 +4,33 @@ use serde::ser::SerializeStruct;
 use serde::Serialize;
 use thiserror::Error;
 
+/// Errors of the Danmuji Application
+/// todo: for some of the variants, it is not sure they're worth capturing, i.e., the application
+/// can still be functioning after they occurs.
 #[derive(Error, Debug)]
 pub enum DanmujiError {
     /// Http request error, e.g., fail to
-    /// fetch UserInfo or login url from Bilibili's
-    /// API
+    /// fetch UserInfo or login url from Bilibili's API
     #[error("HTTP Error: {0}")]
     Reqwest(#[from] reqwest::Error),
-    /// Fail to Parse header
-    #[error("Header Parsing Error: {0}")]
-    HeaderParse(#[from] reqwest::header::ToStrError),
+
     /// Invalid Header Value
     #[error("Invalid Header Value: {0}")]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+
     /// We need to parse SESSDATA, DedeUserID, bili_jct, etc fields from
-    /// cookie string. Throw the error if some field is missing
+    /// cookie string. The error represents something is missing.
     #[error("{0}")]
     CookieParse(&'static str),
+
     /// Forward IO Error
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
+
     /// Forward Json Parsing Error
     #[error("{0}")]
     JsonError(#[from] serde_json::Error),
+
     /// Missing expected field in Bilibili's API response
     #[error("Unexpected Bilibili's API Format, Please File an Issue")]
     APIFormatError,
