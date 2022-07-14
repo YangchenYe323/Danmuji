@@ -39,7 +39,7 @@ pub struct QrCode {
 ///
 pub async fn getQrCode() -> DanmujiResult<DanmujiApiResponse<QrCode>> {
     let cli = reqwest::ClientBuilder::new()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36")
+        .user_agent(USER_AGENT)
         .build()?;
     let res = cli
         .get("https://passport.bilibili.com/qrcode/getLoginUrl")
