@@ -34,7 +34,7 @@ version = "0.5.6"
 features = ["ws"]
 
 [dependencies.axum-extra]
-version = "0.4.1"
+version = "0.3.3"
 features = ["spa"]
 
 [dependencies.serde]
