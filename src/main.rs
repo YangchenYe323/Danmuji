@@ -157,7 +157,7 @@ async fn main() {
         .route("/api/disconnect", post(disconnect))
         .route("/api/getGiftConfig", get(queryGiftConfig))
         .route("/api/setGiftConfig", post(setGiftConfig))
-        .fallback(
+        .fallback_service(
             get_service(ServeFile::new(INDEX_FILE.as_path())).handle_error(handle_error), // serve index page as fallback
         )
         .layer(Extension(Arc::new(Mutex::new(state))));

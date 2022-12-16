@@ -30,15 +30,18 @@ tokio-tungstenite = "*"
 futures-channel = "0.3"
 
 [dependencies.axum]
-version = "0.5.6"
+version = "0.6.1"
 features = ["ws"]
 
 [dependencies.axum-extra]
-version = "0.3.3"
+version = "0.4.2"
 features = ["spa"]
 
+[dependencies.axum-macros]
+version = "0.3.0"
+
 [dependencies.serde]
-version = "1.0.37"
+version = "1.0.150"
 features = ["derive"]
 
 [dependencies.hyper]

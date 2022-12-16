@@ -7,7 +7,8 @@ use crate::{
     util::{delete_user_config, save_user_config},
     DanmujiApiResponse, DanmujiError, DanmujiResult, DanmujiState, USER_AGENT,
 };
-use axum::{Extension, Json};
+use axum::{Extension, extract::Json};
+use axum_macros::debug_handler;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -37,6 +38,7 @@ pub struct QrCode {
 /// # Success:
 /// On success, return [QrCode] in Json Format
 ///
+#[debug_handler]
 pub async fn getQrCode() -> DanmujiResult<DanmujiApiResponse<QrCode>> {
     let cli = reqwest::ClientBuilder::new()
         .user_agent(USER_AGENT)
@@ -83,9 +85,10 @@ pub async fn getQrCode() -> DanmujiResult<DanmujiApiResponse<QrCode>> {
 /// On success, return [User] in Json Format
 /// It also succeeds when a user is already logged in.
 ///
+#[debug_handler]
 pub async fn loginCheck(
-    Json(qrcode): Json<QrCode>,
     Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+    Json(qrcode): Json<QrCode>,
 ) -> DanmujiResult<DanmujiApiResponse<User>> {
     let mut state = state.lock().await;
     if let Some(user_config) = &state.user {
@@ -168,6 +171,7 @@ pub async fn loginCheck(
 /// Request Method: GET
 ///
 /// Query the login status of the server
+#[debug_handler]
 pub async fn getLoginStatus(
     Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
 ) -> DanmujiResult<DanmujiApiResponse<User>> {
@@ -190,6 +194,7 @@ pub async fn getLoginStatus(
 /// Request Method: POST
 ///
 /// Logout the user and stop room connection if any
+#[debug_handler]
 pub async fn logout(
     Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
 ) -> DanmujiResult<DanmujiApiResponse<String>> {

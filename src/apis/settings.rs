@@ -1,6 +1,7 @@
 //! This module contains Danmuji's Web API for changing settings,
 //! e.g., auto gift thanks.
 use axum::{Extension, Json};
+use axum_macros::debug_handler;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::warn;
@@ -27,9 +28,10 @@ pub async fn queryGiftConfig(
 /// Request Body: Json<GiftThankConfig>
 ///
 /// set server's gift thank config
+#[debug_handler]
 pub async fn setGiftConfig(
-    Json(config): Json<GiftThankConfig>,
     Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+    Json(config): Json<GiftThankConfig>,
 ) -> DanmujiResult<DanmujiApiResponse<()>> {
     if let Err(err) = save_thank_config(&config) {
         warn!("Fail Saving Thank Config: {}", err);
