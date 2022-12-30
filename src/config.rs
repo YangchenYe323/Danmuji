@@ -99,7 +99,7 @@ impl Cookie {
             }
         }
 
-        println!("{:?}", cookie_map);
+        println!("{cookie_map:?}");
 
         let cookie = Cookie {
             DedeUserID: cookie_map
@@ -148,8 +148,7 @@ impl RoomConfig {
             .build()?;
         let res = cli
             .get(format!(
-                "https://api.live.bilibili.com/room/v1/Room/room_init?id={}",
-                room_id
+                "https://api.live.bilibili.com/room/v1/Room/room_init?id={room_id}"
             ))
             .send()
             .await?;
@@ -179,12 +178,11 @@ impl RoomConfig {
         let effective_room_id = room_init.effective_room_id();
         let res = cli
             .get(format!(
-                "https://api.live.bilibili.com/room_ex/v1/RoomNews/get?roomid={}",
-                room_id
+                "https://api.live.bilibili.com/room_ex/v1/RoomNews/get?roomid={room_id}"
             ))
             .header(
                 "referer",
-                format!("https://live.bilibili.com/{}", effective_room_id),
+                format!("https://live.bilibili.com/{effective_room_id}"),
             )
             .send()
             .await?;

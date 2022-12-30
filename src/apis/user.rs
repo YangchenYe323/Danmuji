@@ -149,7 +149,7 @@ pub async fn loginCheck(
         let cookie_str = cookies.join(";");
 
         let config = UserConfig::fetch(cookie_str).await?;
-        println!("User Config: {:?}", config);
+        println!("User Config: {config:?}");
 
         if let Err(err) = save_user_config(&config) {
             warn!("Error Saving User Config: {}", err);
