@@ -7,7 +7,7 @@ use crate::{
     util::{delete_user_config, save_user_config},
     DanmujiApiResponse, DanmujiError, DanmujiResult, DanmujiState, USER_AGENT,
 };
-use axum::{Extension, extract::Json};
+use axum::{extract::Json, Extension};
 use axum_macros::debug_handler;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -135,7 +135,7 @@ pub async fn loginCheck(
     if status {
         // the response might have multiple Set-Cookie headers
         // extract and process all of them
-        let cookie = headers.get_all("Set-Cookie");
+        let cookie = headers.get_all("set-cookie");
         let mut cookie_set = HashSet::new();
         for c in cookie {
             // here we know that Bilibili's cookie header doesn't contain

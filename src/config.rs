@@ -30,7 +30,8 @@ impl UserConfig {
             .header("user_agent", USER_AGENT)
             .header("cookie", &raw_cookie)
             .send()
-            .await?;
+            .await
+            .unwrap();
 
         // UserInfo Query Response
         // struct UserInfoResponse {
@@ -39,14 +40,14 @@ impl UserConfig {
         //     message: String,
         //     data: User,
         // }
-        let mut user_info: Value = res.json().await?;
+        let mut user_info: Value = res.json().await.unwrap();
         let user = user_info
             .get_mut("data")
             .ok_or(DanmujiError::APIFormatError)?
             .take();
-        let user: User = serde_json::from_value(user)?;
+        let user: User = serde_json::from_value(user).unwrap();
         // structuralize cookie
-        let cookie = Cookie::from_str(&raw_cookie)?;
+        let cookie = Cookie::from_str(&raw_cookie).unwrap();
         Ok(UserConfig {
             raw_cookie,
             user,
@@ -73,7 +74,7 @@ pub struct User {
     pub user_next_intimacy: u64,
     pub user_level_rank: u64,
     pub user_charged: u64,
-    pub billCoin: u64,
+    pub billCoin: f64,
 }
 
 // todo: we can also parse expire date here
@@ -334,7 +335,7 @@ struct WsConfigResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct BulletScreenPropertyResponse {
-    code: u8,
+    code: i32,
     data: BulletScreenData,
 }
 

@@ -99,7 +99,7 @@ async fn main() {
     // set log collector
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::INFO)
         .init();
     info!("Logger Initialized");
 
