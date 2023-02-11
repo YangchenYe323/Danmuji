@@ -6,9 +6,9 @@ use tokio::sync::Mutex;
 use tracing::warn;
 
 use crate::{
-    config::{Room, RoomConfig},
-    util::{delete_room_config, save_room_config},
-    DanmujiApiResponse, DanmujiResult, DanmujiState,
+  config::{Room, RoomConfig},
+  util::{delete_room_config, save_room_config},
+  DanmujiApiResponse, DanmujiResult, DanmujiState,
 };
 
 /// Request Path: <host>/api/roomStatus
@@ -16,19 +16,19 @@ use crate::{
 ///
 /// Query which room this server is connected to
 pub async fn getRoomStatus(
-    Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+  Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
 ) -> DanmujiResult<DanmujiApiResponse<Room>> {
-    let state = state.lock().await;
+  let state = state.lock().await;
 
-    let room_config = &state.room;
+  let room_config = &state.room;
 
-    if room_config.is_some() {
-        Ok(DanmujiApiResponse::success(
-            room_config.as_ref().map(|config| config.room.clone()),
-        ))
-    } else {
-        Ok(DanmujiApiResponse::failure(None))
-    }
+  if room_config.is_some() {
+    Ok(DanmujiApiResponse::success(
+      room_config.as_ref().map(|config| config.room.clone()),
+    ))
+  } else {
+    Ok(DanmujiApiResponse::failure(None))
+  }
 }
 
 /// Request Path: <host>/api/disconnect
@@ -37,22 +37,22 @@ pub async fn getRoomStatus(
 /// Disconnect from current room.
 /// Always succeed
 pub async fn disconnect(
-    Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+  Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
 ) -> DanmujiResult<DanmujiApiResponse<()>> {
-    let mut state = state.lock().await;
+  let mut state = state.lock().await;
 
-    let room = state.room.take();
-    if let Some(room) = room {
-        state.cli.disconnect(room.room_init.room_id).await;
-        state.sender.disconnect_room().await;
-    }
+  let room = state.room.take();
+  if let Some(room) = room {
+    state.cli.disconnect(room.room_init.room_id).await;
+    state.sender.disconnect_room().await;
+  }
 
-    // delete config file
-    if let Err(err) = delete_room_config() {
-        warn!("Fail deleting room config: {}", err);
-    }
+  // delete config file
+  if let Err(err) = delete_room_config() {
+    warn!("Fail deleting room config: {}", err);
+  }
 
-    Ok(DanmujiApiResponse::success(None))
+  Ok(DanmujiApiResponse::success(None))
 }
 
 /// Request Path: <host>/api/roomInit/:room_id
@@ -72,40 +72,40 @@ pub async fn disconnect(
 /// # Success:
 /// On success, client is connected to the specified room
 pub async fn roomInit(
-    Path(room_id): Path<i64>,
-    Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+  Path(room_id): Path<i64>,
+  Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
 ) -> DanmujiResult<DanmujiApiResponse<Room>> {
-    // a room is already connected to
-    let mut state = state.lock().await;
+  // a room is already connected to
+  let mut state = state.lock().await;
 
-    // already connected
-    if state.room.is_some() {
-        return Ok(DanmujiApiResponse::failure(None));
-    }
+  // already connected
+  if state.room.is_some() {
+    return Ok(DanmujiApiResponse::failure(None));
+  }
 
-    // fetch room config
-    let room_config = RoomConfig::fetch(room_id).await?;
-    if room_config.room_init.room_id == 0 {
-        // invalid room id
-        return Ok(DanmujiApiResponse::failure(None));
-    }
+  // fetch room config
+  let room_config = RoomConfig::fetch(room_id).await?;
+  if room_config.room_init.room_id == 0 {
+    // invalid room id
+    return Ok(DanmujiApiResponse::failure(None));
+  }
 
-    // valid room, connect
-    if let Err(err) = save_room_config(&room_config) {
-        warn!("Save room config failure: {}", err);
-    }
+  // valid room, connect
+  if let Err(err) = save_room_config(&room_config) {
+    warn!("Save room config failure: {}", err);
+  }
 
-    let return_room = room_config.room.clone();
-    let room_id = room_config.room_init.room_id;
-    state.sender.connect_room(room_config.clone()).await?;
-    state.room = Some(room_config);
+  let return_room = room_config.room.clone();
+  let room_id = room_config.room_init.room_id;
+  state.sender.connect_room(room_config.clone()).await?;
+  state.room = Some(room_config);
 
-    let uid = state.user.as_ref().map(|u| u.user.uid);
+  let uid = state.user.as_ref().map(|u| u.user.uid);
 
-    // start client
-    let cli = &mut state.cli;
-    cli.start(room_id, uid)?;
+  // start client
+  let cli = &mut state.cli;
+  cli.start(room_id, uid)?;
 
-    // Ok
-    Ok(DanmujiApiResponse::success(Some(return_room)))
+  // Ok
+  Ok(DanmujiApiResponse::success(Some(return_room)))
 }

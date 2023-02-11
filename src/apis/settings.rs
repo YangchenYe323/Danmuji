@@ -7,8 +7,8 @@ use tokio::sync::Mutex;
 use tracing::warn;
 
 use crate::{
-    plugins::GiftThankConfig, util::save_thank_config, DanmujiApiResponse, DanmujiResult,
-    DanmujiState,
+  plugins::GiftThankConfig, util::save_thank_config, DanmujiApiResponse, DanmujiResult,
+  DanmujiState,
 };
 
 /// Request Path: <host>/api/getGiftConfig
@@ -16,11 +16,11 @@ use crate::{
 ///
 /// Query the current Gift Config
 pub async fn queryGiftConfig(
-    Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+  Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
 ) -> DanmujiResult<DanmujiApiResponse<GiftThankConfig>> {
-    let state = state.lock().await;
-    let config = state.thanker.get_config().await;
-    Ok(DanmujiApiResponse::success(config))
+  let state = state.lock().await;
+  let config = state.thanker.get_config().await;
+  Ok(DanmujiApiResponse::success(config))
 }
 
 /// Request Path <host>/api/setGiftConfig
@@ -30,13 +30,13 @@ pub async fn queryGiftConfig(
 /// set server's gift thank config
 #[debug_handler]
 pub async fn setGiftConfig(
-    Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
-    Json(config): Json<GiftThankConfig>,
+  Extension(state): Extension<Arc<Mutex<DanmujiState>>>,
+  Json(config): Json<GiftThankConfig>,
 ) -> DanmujiResult<DanmujiApiResponse<()>> {
-    if let Err(err) = save_thank_config(&config) {
-        warn!("Fail Saving Thank Config: {}", err);
-    }
-    let state = state.lock().await;
-    state.thanker.set_config(config).await;
-    Ok(DanmujiApiResponse::success(None))
+  if let Err(err) = save_thank_config(&config) {
+    warn!("Fail Saving Thank Config: {}", err);
+  }
+  let state = state.lock().await;
+  state.thanker.set_config(config).await;
+  Ok(DanmujiApiResponse::success(None))
 }
