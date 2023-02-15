@@ -1,4 +1,4 @@
-# Danmuji
+# Danmuji [![ci](https://github.com/YangchenYe323/Danmuji/actions/workflows/rust-test.yml/badge.svg)](https://github.com/YangchenYe323/Danmuji/actions/workflows/rust-test.yml)
 
 一个使用Rust + Typescript编写的B站直播弹幕助手。
 
