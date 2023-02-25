@@ -175,6 +175,6 @@ async fn main() {
     .unwrap();
 }
 
-async fn handle_error(_err: std::io::Error) -> impl IntoResponse {
+async fn handle_error(_err: impl std::error::Error) -> impl IntoResponse {
   (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }
