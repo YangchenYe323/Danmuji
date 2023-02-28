@@ -26,7 +26,6 @@ use axum::{
   routing::{get, get_service, post},
   Router,
 };
-use axum_extra::routing::SpaRouter;
 use client::{BiliClient, BiliMessage};
 pub(crate) use config::{RoomConfig, UserConfig};
 use error::DanmujiError;
@@ -37,7 +36,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
-use tower_http::services::ServeFile;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::{info, warn};
 use tracing_subscriber::filter::targets::Targets;
 use tracing_subscriber::layer::SubscriberExt;
@@ -149,11 +148,10 @@ async fn main() {
     room,
   };
 
-  // single page routers
-  let spa = SpaRouter::new("/assets", ASSETS_DIR.as_path());
+  let assets = ServeDir::new(ASSETS_DIR.as_path());
 
   let app = Router::new()
-    .merge(spa) // assets
+    .nest_service("/assets", assets) // assets
     .route("/api/loginStatus", get(getLoginStatus)) // apis
     .route("/api/qrcode", get(getQrCode))
     .route("/api/loginCheck", post(loginCheck))
