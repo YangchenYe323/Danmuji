@@ -9,11 +9,11 @@ use std::{
     atomic::{AtomicBool, Ordering},
     Arc,
   },
-  time::{SystemTime, UNIX_EPOCH},
+  time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use tokio::sync::{mpsc, Mutex};
-use tracing::{error, warn};
+use tracing::{error, trace, warn};
 
 use crate::{
   config::{BulletScreenConfig, RoomConfig, UserConfig},
@@ -141,8 +141,9 @@ async fn start_worker(
     }
 
     let msg = msg.unwrap();
-
-    {
+    // todo(yangchen): check for danmu size limit for each user
+    let msgs = chunk_msg_by_size(&msg, 20);
+    for msg in msgs {
       let user = user.lock().await;
       let room = room.lock().await;
       let danmu = danmu.lock().await;
@@ -171,12 +172,15 @@ async fn start_worker(
 
       match res {
         Ok(res) => {
-          println!("{:?}", res.text().await);
+          trace!("{:?}", res.text().await);
         }
         Err(err) => {
           error!("Bullet Screen Post Error: {}", err)
         }
       }
+
+      // throttle to avoid sending too frequently
+      tokio::time::sleep(Duration::from_millis(500)).await;
     }
   }
 }
@@ -204,4 +208,13 @@ fn build_form<'a>(
   form.insert("csrf_token", user.cookie.bili_jct.clone());
   form.insert("csrf", user.cookie.bili_jct.clone());
   form
+}
+
+fn chunk_msg_by_size(msg: &str, size: usize) -> Vec<String> {
+  msg
+    .chars()
+    .collect::<Vec<char>>()
+    .chunks(size)
+    .map(|chunk| chunk.iter().collect::<String>())
+    .collect()
 }
