@@ -30,6 +30,7 @@ use client::{BiliClient, BiliMessage};
 pub(crate) use config::{RoomConfig, UserConfig};
 use error::DanmujiError;
 use hyper::StatusCode;
+use plugins::Chatbot;
 use response::DanmujiApiResponse;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -77,6 +78,7 @@ lazy_static! {
 /// V
 /// [DanmujiSender] (Consumes the danmu produced by plugins and posts them to Bilibili)
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct DanmujiState {
   // client that receives massage from Bilibili
   cli: BiliClient,
@@ -84,10 +86,10 @@ pub struct DanmujiState {
   sender: DanmujiSender,
   // thank gift component
   thanker: GiftThanker,
-  #[allow(dead_code)]
+  // openai chatbot
+  chatbot: Chatbot,
   // broadcast channel for subscription
   tx: broadcast::Sender<BiliMessage>,
-  #[allow(dead_code)]
   // sender for danmu to post
   sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
   // user configuration
@@ -109,7 +111,7 @@ async fn main() {
   info!("Logger Initialized");
 
   // setup broadcast channel & client
-  let (tx, rx) = broadcast::channel(100);
+  let (tx, _rx) = broadcast::channel(100);
   let mut cli = BiliClient::new(tx.clone());
   // try to recover saved config
   let user = load_user_config();
@@ -135,13 +137,16 @@ async fn main() {
 
   // plugin: gift thanker
   let gift_thank_config = load_thank_config();
-  let thanker = GiftThanker::start(gift_thank_config, rx, sender_tx.clone());
+  let thanker = GiftThanker::start(gift_thank_config, tx.subscribe(), sender_tx.clone());
+
+  let chatbot = Chatbot::start(tx.subscribe(), sender_tx.clone());
 
   // initialize state
   let state = DanmujiState {
     cli,
     sender: danmu_sender,
     thanker,
+    chatbot,
     tx,
     sender_tx,
     user,
