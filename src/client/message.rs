@@ -220,7 +220,7 @@ impl BiliWebsocketHeader {
       .write_u16::<BigEndian>(self.protocol_version)
       .unwrap();
     // write operatin type: enter room = 7
-    header.write_u32::<BigEndian>(self.op.into()).unwrap();
+    header.write_u32::<BigEndian>(self.op as u32).unwrap();
     // write seq id
     header.write_u32::<BigEndian>(self.seq).unwrap();
 
@@ -230,30 +230,17 @@ impl BiliWebsocketHeader {
   }
 }
 
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpType {
-  HeartBeat,
-  HeartBeatReply,
-  Notification,
-  Entry,
-  EntryReply,
+  HeartBeat = 2,
+  HeartBeatReply = 3,
+  Notification = 5,
+  Entry = 7,
+  EntryReply = 8,
 
   // place holder for all unknown ops
-  Unknown,
-}
-
-impl From<OpType> for u32 {
-  fn from(op: OpType) -> u32 {
-    match op {
-      OpType::HeartBeat => 2,
-      OpType::HeartBeatReply => 3,
-      OpType::Notification => 5,
-      OpType::Entry => 7,
-      OpType::EntryReply => 8,
-
-      OpType::Unknown => 0,
-    }
-  }
+  Unknown = 0,
 }
 
 impl From<u32> for OpType {
