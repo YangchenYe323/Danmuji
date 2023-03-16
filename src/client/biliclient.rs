@@ -97,12 +97,14 @@ impl BiliClient {
     if let Some(shutdown) = self.shutdown.remove(&room_id) {
       shutdown.store(true, Ordering::Relaxed);
       let task = self.tasks.remove(&room_id);
-      if let Some(task) = task {
-        let (res,) = tokio::join!(task);
-        if let Err(err) = res {
-          error!("{}", err);
+      tokio::spawn(async move {
+        if let Some(task) = task {
+          let (res,) = tokio::join!(task);
+          if let Err(err) = res {
+            error!("{}", err);
+          }
         }
-      }
+      });
     }
   }
 
