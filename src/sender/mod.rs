@@ -124,9 +124,9 @@ impl Drop for DanmujiSender {
 async fn start_worker(
   mut upstream: Producer,
   shutdown: Arc<AtomicBool>,
-  user: Arc<Mutex<Option<UserConfig>>>,
-  danmu: Arc<Mutex<Option<BulletScreenConfig>>>,
-  room: Arc<Mutex<Option<RoomConfig>>>,
+  user_config: Arc<Mutex<Option<UserConfig>>>,
+  danmu_config: Arc<Mutex<Option<BulletScreenConfig>>>,
+  room_config: Arc<Mutex<Option<RoomConfig>>>,
 ) {
   loop {
     // check shutdown
@@ -140,26 +140,25 @@ async fn start_worker(
       break;
     }
 
-    let msg = msg.unwrap();
-    // todo(yangchen): check for danmu size limit for each user
-    let msgs = chunk_msg_by_size(&msg, 20);
-    for msg in msgs {
-      let user = user.lock().await;
-      let room = room.lock().await;
-      let danmu = danmu.lock().await;
-
+    let (user, room, danmu) = {
+      let user = user_config.lock().await;
+      let room = room_config.lock().await;
+      let danmu = danmu_config.lock().await;
       if user.is_none() || room.is_none() || danmu.is_none() {
         continue;
       }
+      (
+        user.as_ref().unwrap().clone(),
+        room.as_ref().unwrap().clone(),
+        danmu.as_ref().unwrap().clone(),
+      )
+    };
+    let size = danmu.danmu.length as usize;
 
-      let (user, room, danmu) = (
-        user.as_ref().unwrap(),
-        room.as_ref().unwrap(),
-        danmu.as_ref().unwrap(),
-      );
-
-      let form = build_form(msg, room, user, danmu);
-
+    let msg = msg.unwrap();
+    let msgs = chunk_msg_by_size(&msg, size);
+    for msg in msgs {
+      let form = build_form(msg, &room, &user, &danmu);
       // send
       let cli = reqwest::Client::new();
       let res = cli

@@ -308,7 +308,7 @@ pub struct WsHost {
   pub ws_port: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulletScreenConfig {
   pub bubble: i64,
   pub bubble_color: String,
@@ -316,7 +316,7 @@ pub struct BulletScreenConfig {
   pub uname_color: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulletScreen {
   pub color: i64,
   pub length: i64,
