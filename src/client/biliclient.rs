@@ -152,7 +152,6 @@ struct ClientConfig {
 /// *`config`: Configuration of the connection
 /// * `url`: Socket Server's url
 ///
-// todo: find a way to make shutdown faster, possibly with [stream-cancel](https://github.com/jonhoo/stream-cancel)
 async fn start_worker(config: ClientConfig, url: &'static str) {
   loop {
     let ClientConfig {
@@ -186,13 +185,8 @@ async fn start_worker(config: ClientConfig, url: &'static str) {
             for inner in msg.parse() {
               let bili_msg = BiliMessage::from_raw_wesocket_message(inner);
               if let Some(msg) = bili_msg {
-                // info!("Received Msg: {:?}", msg);
-                // send message to downstream
-                {
-                  let res = downstream.send(msg);
-                  if let Err(err) = res {
-                    error!("{}", err);
-                  }
+                if let Err(err) = downstream.send(msg) {
+                  error!("{}", err);
                 }
               }
             }
