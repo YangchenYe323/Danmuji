@@ -178,7 +178,13 @@ async fn start_worker(config: ClientConfig, url: &'static str) {
     // send the message to downstream
     read
       .for_each(|msg| async {
-        let msg = msg.unwrap();
+        let msg = match msg {
+          Ok(msg) => msg,
+          Err(err) => {
+            error!("{}", err);
+            return;
+          }
+        };
         match msg {
           Message::Binary(buf) => {
             let msg = BiliWebsocketMessage::from_binary(buf).unwrap();
