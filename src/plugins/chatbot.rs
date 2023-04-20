@@ -69,11 +69,18 @@ async fn start_bot(
         ])
         .build()
         .unwrap();
-      let response = client.chat().create(request).await.unwrap();
-      for choice in response.choices {
-        if let Err(err) = downstream.send(choice.message.content) {
-          error!("Danmu Sender Dropped: {}", err);
-          break;
+      let res = client.chat().create(request).await;
+      match res {
+        Ok(response) => {
+          for choice in response.choices {
+            if let Err(err) = downstream.send(choice.message.content) {
+              error!("Danmu Sender Dropped: {}", err);
+              break;
+            }
+          }
+        }
+        Err(err) => {
+          error!("{}", err);
         }
       }
     }
