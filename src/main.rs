@@ -139,7 +139,7 @@ async fn main() {
   let gift_thank_config = load_thank_config();
   let thanker = GiftThanker::start(gift_thank_config, tx.subscribe(), sender_tx.clone());
 
-  let chatbot = Chatbot::start(tx.subscribe(), sender_tx.clone());
+  let chatbot = Chatbot::start(tx.subscribe(), sender_tx.clone()).unwrap();
 
   // initialize state
   let state = DanmujiState {
