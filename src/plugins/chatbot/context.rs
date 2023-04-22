@@ -15,20 +15,16 @@ use crate::DanmujiResult;
 
 #[derive(Debug)]
 pub struct ChatbotMessageBuilder {
-  max_token: u16,
   message_log: VecDeque<ChatCompletionRequestMessage>,
-  cur_token: u16,
   id_generator: UserIdGenerator,
   persister: FilePersister,
 }
 
 impl ChatbotMessageBuilder {
-  pub fn new(max_token: u16, persist_to: impl AsRef<Path>) -> DanmujiResult<Self> {
+  pub fn new(_max_token: u16, persist_to: impl AsRef<Path>) -> DanmujiResult<Self> {
     let persister = FilePersister::from_file(persist_to)?;
     Ok(Self {
-      max_token,
       message_log: VecDeque::default(),
-      cur_token: 0,
       id_generator: UserIdGenerator::default(),
       persister,
     })
@@ -43,8 +39,8 @@ impl ChatbotMessageBuilder {
       .build()
       .unwrap();
     self.persister.persist_new_message(&msg);
+    self.message_log.pop_front();
     self.message_log.push_back(msg);
-    self.cur_token += content.chars().count() as u16;
   }
 
   pub fn add_response_message(&mut self, response: &ChatCompletionResponseMessage) {
@@ -54,23 +50,12 @@ impl ChatbotMessageBuilder {
       .build()
       .unwrap();
     self.persister.persist_new_message(&msg);
+    self.message_log.pop_front();
     self.message_log.push_back(msg);
-    self.cur_token += response.content.chars().count() as u16;
   }
 
   pub fn get_request_messages(&mut self) -> &[ChatCompletionRequestMessage] {
-    self.ensure_token();
     self.message_log.make_contiguous()
-  }
-
-  fn ensure_token(&mut self) {
-    while self.cur_token >= self.max_token {
-      if let Some(msg) = self.message_log.pop_front() {
-        self.cur_token -= msg.content.chars().count() as u16;
-      } else {
-        break;
-      }
-    }
   }
 }
 
