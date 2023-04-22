@@ -5,6 +5,7 @@ use std::sync::{
   Arc,
 };
 
+use async_openai::types::Prompt;
 use tokio::sync::{broadcast::Receiver, mpsc::UnboundedSender};
 use tracing::error;
 
@@ -53,7 +54,7 @@ async fn start_bot(
   shutdown: Arc<AtomicBool>,
   mut upstream: Receiver<BiliMessage>,
   downstream: UnboundedSender<String>,
-  mut context: ChatbotMessageBuilder,
+  mut _context: ChatbotMessageBuilder,
 ) {
   const IDENTIFIER: &str = "@bot ";
   let client = async_openai::Client::new();
@@ -72,20 +73,17 @@ async fn start_bot(
     };
     let content = comment.content();
     if let Some(content) = content.strip_prefix(IDENTIFIER) {
-      context.add_request_message(content, comment.uname());
-      let request_messages = context.get_request_messages();
-      let request = async_openai::types::CreateChatCompletionRequestArgs::default()
+      let request = async_openai::types::CreateCompletionRequestArgs::default()
         .max_tokens(MAX_COMPLETION_TOKEN)
-        .model("gpt-3.5-turbo")
-        .messages(request_messages)
+        .model("text-davinci-003")
+        .prompt(Prompt::String(content.to_string()))
         .build()
         .unwrap();
-      let res = client.chat().create(request).await;
+      let res = client.completions().create(request).await;
       match res {
         Ok(response) => {
           for choice in response.choices {
-            context.add_response_message(&choice.message);
-            if let Err(err) = downstream.send(choice.message.content) {
+            if let Err(err) = downstream.send(choice.text) {
               error!("Danmu Sender Dropped: {}", err);
               break;
             }
