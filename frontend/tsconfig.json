@@ -1,4 +1,5 @@
 {
+	"references": [{ "path": "./tsconfig.node.json" }],
 	"compilerOptions": {
 		"target": "ESNext",
 		"useDefineForClassFields": true,
@@ -14,8 +15,7 @@
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"noEmit": true,
-		"jsx": "react-jsx"
+		"jsx": "react-jsxdev"
 	},
-	"include": ["./src/*.{ts,tsx}"],
-	"references": [{ "path": "./tsconfig.node.json" }]
+	"include": ["./src/*.{ts,tsx}"]
 }
