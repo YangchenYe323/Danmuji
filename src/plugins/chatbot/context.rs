@@ -46,8 +46,11 @@ impl ChatbotMessageBuilder {
   }
 
   pub fn add_response_message(&mut self, response: &ChatCompletionResponseMessage) {
+    let Some(response_content) = response.content.as_ref() else {
+      return;
+    };
     let msg = ChatCompletionRequestMessageArgs::default()
-      .content(&response.content)
+      .content(response_content)
       .role(Role::System)
       .build()
       .unwrap();
