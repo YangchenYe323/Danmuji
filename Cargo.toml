@@ -28,7 +28,7 @@ ts-rs = "7.0"
 lazy_static = "1.4.0"
 tokio-tungstenite = "*"
 futures-channel = "0.3"
-async-openai = "0.13.0"
+async-openai = "0.14.1"
 
 [dependencies.axum]
 version = "0.6.1"
