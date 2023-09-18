@@ -35,7 +35,7 @@ version = "0.6.1"
 features = ["ws"]
 
 [dependencies.axum-extra]
-version = "0.7.0"
+version = "0.8.0"
 
 [dependencies.axum-macros]
 version = "0.3.0"
