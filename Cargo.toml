@@ -45,7 +45,7 @@ version = "1.0.150"
 features = ["derive"]
 
 [dependencies.hyper]
-version = "0.14.17"
+version = "1.0.1"
 features = ["full"]
 
 [dependencies.tower-http]
