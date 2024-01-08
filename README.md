@@ -1,5 +1,7 @@
 # Danmuji [![ci](https://github.com/YangchenYe323/Danmuji/actions/workflows/rust-test.yml/badge.svg)](https://github.com/YangchenYe323/Danmuji/actions/workflows/rust-test.yml)
 
+# Update: 跟不上b站官方开放平台脚步，此项目已废弃
+
 一个使用Rust + Typescript编写的B站直播弹幕助手。
 
 #### 后端：Axum
